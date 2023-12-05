@@ -8,32 +8,31 @@
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
-        printf("Usage: %s <server_address> <server_port>\n", argv[0]);
+        printf("Usage: %s <server_address> <req/rep_port>\n", argv[0]);
         return 1;
     }
 
     // Get Server Address and Port
     char *server_address = argv[1];
-    int server_port = atoi(argv[2]);
+    char *server_port = argv[2];
 
-    // Create socket
-    void *context = zmq_ctx_new();
-    void *requester = zmq_socket(context, ZMQ_REQ);
+    char *server_endpoint = (char*) malloc((strlen(server_address) + strlen(server_port) + 8) * sizeof(char));
+    sprintf(server_endpoint, "tcp://%s:%s", server_address, server_port);
 
     // Connect to reply socket
-    char server_endpoint[256];
-    sprintf(server_endpoint, "tcp://%s:%d", server_address, server_port);
+    void *context = zmq_ctx_new();
+    void *requester = zmq_socket(context, ZMQ_REQ);
     int rc = zmq_connect(requester, server_endpoint);
     assert(rc == 0);
 
     //Send connection message
     msg_t lizard;
     lizard.type = LIZARD_CONNECT;
-    zmq_send(requester, &lizard, sizeof(lizard), 0);
+    zmq_send(requester, &lizard, sizeof(msg_t), 0);
 
     //Receive reply with assigned letter and password
     reply_t reply;
-    zmq_recv(requester, &reply, sizeof(reply), 0);
+    zmq_recv(requester, &reply, sizeof(reply_t), 0);
     lizard.id = reply.id;
     lizard.password = reply.password;
     lizard.type = LIZARD_MOVE;
@@ -43,6 +42,7 @@ int main(int argc, char *argv[]) {
         printf("Server is full\n");
         zmq_close(requester);
         zmq_ctx_destroy(context);
+        free(server_endpoint);
         return 0;
     }
     
@@ -97,8 +97,8 @@ int main(int argc, char *argv[]) {
             lizard.type = LIZARD_DISCONNECT; 
             break;
         }
-            zmq_send(requester, &lizard, sizeof(lizard), 0);
-            zmq_recv(requester, &reply, sizeof(reply), 0);
+            zmq_send(requester, &lizard, sizeof(msg_t), 0);
+            zmq_recv(requester, &reply, sizeof(reply_t), 0);
             if (key == 'Q' || key == 'q'){
                 break;
             }
@@ -110,6 +110,7 @@ int main(int argc, char *argv[]) {
 
     zmq_close(requester);
     zmq_ctx_destroy(context);
+    free(server_endpoint);
 
     return 0;
 }

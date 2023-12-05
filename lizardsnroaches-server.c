@@ -18,39 +18,41 @@ typedef struct info_t
     int password;
     int points;
     int pos_x, pos_y;
+    direction_t direction;
 } info_t;
 
 void new_position(info_t *move, direction_t direction){
-    switch (direction) {
+    move->direction = direction;
+    switch (move->direction) {
     case UP:
         (move->pos_x)--;
-        if(move->pos_x ==0)
+        if(move->pos_x == 0)
             move->pos_x = 1;
         break;
     case DOWN:
         (move->pos_x)++;
-        if(move->pos_x ==WINDOW_SIZE-1)
-            move->pos_x = WINDOW_SIZE-2;
+        if(move->pos_x == WINDOW_SIZE + 1)
+            move->pos_x = WINDOW_SIZE;
         break;
     case LEFT:
         (move->pos_y)--;
-        if(move->pos_y ==0)
+        if(move->pos_y == 0)
             move->pos_y = 1;
         break;
     case RIGHT:
         (move->pos_y)++;
-        if(move->pos_y ==WINDOW_SIZE-1)
-            move->pos_y = WINDOW_SIZE-2;
+        if(move->pos_y == WINDOW_SIZE + 1)
+            move->pos_y = WINDOW_SIZE;
     }
 }
 
 void init_lizard(info_t *lizard_data, int lizard, msg_t *msg) {
-
     lizard_data->id = lizard + 'a';
     lizard_data->password = rand();
     lizard_data->points = 0;
     lizard_data->pos_x = rand() % WINDOW_SIZE + 1;
     lizard_data->pos_y = rand() % WINDOW_SIZE + 1;
+    lizard_data->direction = rand() % 4;
 }
 
 void init_roach(info_t *roach_data, int *roach, msg_t *msg) {
@@ -93,6 +95,62 @@ void invalid_msg(void *responder) {
     reply.id = rand() % 256;
     reply.password = -1;
     zmq_send(responder, &reply, sizeof(reply_t), 0);
+}
+
+// int points(info_t *lizard, WINDOW *my_win, info_t roach_data[], int roaches) {
+//     info_t aux;
+//     memcpy(&aux, lizard, sizeof(info_t));
+//     new_position(&aux, aux.direction);
+//     return 0;
+// }
+
+void draw_lizard(void *publisher, info_t *lizard, WINDOW *my_win, int delete) {
+    info_t aux;
+    memcpy(&aux, lizard, sizeof(info_t));
+    char head = delete ? ' ' : lizard->id;
+
+    switch (lizard->direction)
+    {
+    case LEFT:
+        aux.direction = RIGHT;
+        break;
+    case RIGHT:
+        aux.direction = LEFT;
+        break;
+    case UP:
+        aux.direction = DOWN;
+        break;
+    default:
+        aux.direction = UP;
+    }
+    
+    if (delete) {
+        aux.id = ' ';
+    }
+    else if (aux.points < 50) {
+        aux.id = '.';
+    }
+    else {
+        aux.id = '*';
+    }
+
+    wmove(my_win, aux.pos_x, aux.pos_y);
+    waddch(my_win, head | A_BOLD);
+    publisher_update(&aux, head, publisher);
+
+    for (int i = 0; i < 5; i++) {
+        new_position(&aux, aux.direction);
+        wmove(my_win, aux.pos_x, aux.pos_y);
+        waddch(my_win, aux.id | A_BOLD);
+        publisher_update(&aux, aux.id, publisher);
+    }
+}
+
+void draw_roach(void *publisher, info_t *roach, WINDOW *my_win, int delete) {
+    char head = delete ? ' ' : roach->id;
+    wmove(my_win, roach->pos_x, roach->pos_y);
+    waddch(my_win, head | A_BOLD);
+    publisher_update(roach, head, publisher);
 }
 
 int main() {
@@ -142,6 +200,7 @@ int main() {
             }
             move = &lizard_data[lizard];
             init_lizard(move, lizard, &msg);
+            draw_lizard(publisher, move, my_win, 0);
             reply.id = move->id; reply.password = move->password;
             break;
         case ROACH_CONNECT:
@@ -151,6 +210,7 @@ int main() {
             }
             move = &roach_data[roaches];
             init_roach(move, &roaches, &msg);
+            draw_roach(publisher, move, my_win, 0);
             reply.id = move->id; reply.password = move->password;
             break;
         case LIZARD_MOVE:
@@ -159,12 +219,9 @@ int main() {
                 continue;
             }
             move = &lizard_data[msg.id - 'a'];
-            
-            wmove(my_win, move->pos_x, move->pos_y);
-            waddch(my_win,' ');
-            publisher_update(move, ' ', publisher);
-
+            draw_lizard(publisher, move, my_win, 1);
             new_position(move, msg.direction);
+            draw_lizard(publisher, move, my_win, 0);
             break;
         case ROACH_MOVE:
             roach = find_roach(roach_data, roaches, msg);
@@ -173,26 +230,22 @@ int main() {
                 continue;
             }
             move = &roach_data[roach];
-            wmove(my_win, move->pos_x, move->pos_y);
-            waddch(my_win,' ');
-            publisher_update(move, ' ', publisher);
-
+            draw_roach(publisher, move, my_win, 1);
             new_position(move, msg.direction);
+            draw_roach(publisher, move, my_win, 0);
             break;
         case LIZARD_DISCONNECT:
-            if (lizard_data[msg.id - 'a'].password != msg.password) {
+            if (lizard_data[msg.id - 'a'].password == msg.password) {
+                move = &lizard_data[msg.id - 'a'];
+                draw_lizard(publisher, move, my_win, 1);
                 lizard_data[msg.id - 'a'].id = '0';
             }
-            invalid_msg(responder);
+            break;
+        case DISPLAY_CONNECT:
+            // TODO
             continue;
         }
-
-        /* draw mark on new position */
-        wmove(my_win, move->pos_x, move->pos_y);
-        waddch(my_win, move->id | A_BOLD);
         wrefresh(my_win);
-
-        publisher_update(move, move->id, publisher);
         zmq_send(responder, &reply, sizeof(reply_t), 0);
     }
   	endwin();
