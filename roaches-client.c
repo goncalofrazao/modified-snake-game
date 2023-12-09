@@ -10,6 +10,13 @@
 #define MAX_ROACHES 10
 
 int main(int argc, char *argv[]) {
+    reply_t reply;
+    direction_t dir;
+    int id;
+    srand(time(NULL));
+    int num_roaches = rand() % MAX_ROACHES + 1;
+    msg_t *roaches = (msg_t*) malloc(num_roaches * sizeof(msg_t));
+
     if (argc != 3) {
         printf("Usage: %s <server_address> <req/rep_port>\n", argv[0]);
         return 1;
@@ -27,12 +34,6 @@ int main(int argc, char *argv[]) {
     void *requester = zmq_socket(context, ZMQ_REQ);
     int rc = zmq_connect(requester, server_endpoint);
     assert(rc == 0);
-
-    // Seed random number generator
-    srand(time(NULL));
-    int num_roaches = rand() % MAX_ROACHES + 1;
-    msg_t *roaches = (msg_t*) malloc(num_roaches * sizeof(msg_t));
-    reply_t reply;
         
     //Connect every roach to server and get password
     for (int i = 0; i < num_roaches; i++) {
@@ -57,10 +58,9 @@ int main(int argc, char *argv[]) {
     }
 
     //Create direction variable
-    direction_t dir;
     while (1) {
         //Choose a random roach to move
-        int i = rand() % num_roaches;
+        id = rand() % num_roaches;
 
         // Sleep for a random period of time
         usleep(random() % 700000);
@@ -69,22 +69,22 @@ int main(int argc, char *argv[]) {
         dir = (direction_t) (rand() % 4);
         switch (dir){
         case LEFT:
-            printf("Roach %d Going Left\n", i);
+            printf("Roach %d Going Left\n", id);
             break;
         case RIGHT:
-            printf("Roach %d Going Right\n", i);
+            printf("Roach %d Going Right\n", id);
             break;
         case DOWN:
-            printf("Roach %d Going Down\n", i);
+            printf("Roach %d Going Down\n", id);
             break;
         case UP:
-            printf("Roach %d Going Up\n", i);
+            printf("Roach %d Going Up\n", id);
             break;
         }
 
         // Send movement to server
-        roaches[i].direction = dir;
-        zmq_send(requester, &roaches[i], sizeof(msg_t), 0);
+        roaches[id].direction = dir;
+        zmq_send(requester, &roaches[id], sizeof(msg_t), 0);
         zmq_recv(requester, &reply, sizeof(reply_t), 0);
     }
 

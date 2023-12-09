@@ -2,6 +2,8 @@
 typedef enum direction_t {UP, DOWN, LEFT, RIGHT} direction_t;
 typedef enum type_t {LIZARD_CONNECT, ROACH_CONNECT, LIZARD_MOVE, ROACH_MOVE, LIZARD_DISCONNECT, DISPLAY_CONNECT} type_t;
 
+#define WINDOW_SIZE 30
+
 typedef struct msg_t {
     type_t type;
     char id; //character to display
@@ -18,4 +20,5 @@ typedef struct reply_t {
 typedef struct display_t {
     char ch;
     int pos_x, pos_y;
+    int score;
 } display_t;

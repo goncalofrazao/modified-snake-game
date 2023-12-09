@@ -12,5 +12,8 @@ display-app: display-app.c zhelpers.h lar-defs.h
 lizardsnroaches-server: lizardsnroaches-server.c zhelpers.h lar-defs.h
 	gcc lizardsnroaches-server.c -o lizardsnroaches-server -lncurses -lzmq -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
 
+lists-matrix: lists-matrix.c
+	gcc lists-matrix.c -o lists-matrix.so -ldl -shared -fPIC
+
 clean:
 	rm -rf lizard-client roaches-client display-app lizardsnroaches-server *.dSYM

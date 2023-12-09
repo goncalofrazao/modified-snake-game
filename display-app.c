@@ -8,18 +8,16 @@
 #include "lar-defs.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: %s <server_address> <req/rep_port> <pub/sub_port>\n", argv[0]);
+    display_t display;
+    
+    if (argc != 3) {
+        printf("Usage: %s <server_address> <pub/sub_port>\n", argv[0]);
         return 1;
     }
 
     // Get Server Address and Port
     char *server_address = argv[1];
-    char *server_req_port = argv[2];
-    char *server_pub_port = argv[3];
-
-    char *server_req = (char*) malloc((strlen(server_address) + strlen(server_req_port) + 8) * sizeof(char));
-    sprintf(server_req, "tcp://%s:%s", server_address, server_req_port);
+    char *server_pub_port = argv[2];
 
     char *server_sub = (char*) malloc((strlen(server_address) + strlen(server_pub_port) + 8) * sizeof(char));
     sprintf(server_sub, "tcp://%s:%s", server_address, server_pub_port);
@@ -27,21 +25,9 @@ int main(int argc, char *argv[]) {
     // Connect the subscriber socket to the publisher
     void* context = zmq_ctx_new();
     void* subscriber = zmq_socket(context, ZMQ_SUB);
-    int rc_s = zmq_connect(subscriber, server_pub_port);
+    int rc_s = zmq_connect(subscriber, server_sub);
     assert(rc_s == 0);
     zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
-
-    // Connect the requester socket to to send connect message
-    void* requester = zmq_socket(context, ZMQ_REQ);
-    int rc_r = zmq_connect(requester, server_req_port);
-    assert(rc_r == 0);
-
-    // Send connect message and receive window size
-    msg_t msg;
-    int window_size;
-    msg.type = DISPLAY_CONNECT;
-    zmq_send(requester, &msg, sizeof(msg_t), 0);
-    zmq_recv(requester, &window_size, sizeof(int), 0);
 
     // Initialize ncurses
     initscr();
@@ -49,37 +35,36 @@ int main(int argc, char *argv[]) {
 	cbreak();
     keypad(stdscr, TRUE);
 	noecho();
-
+    
     /* creates a window and draws a border */
-    WINDOW * my_win = newwin(window_size, window_size, 0, 0);
-    box(my_win, 0 , 0);	
-	wrefresh(my_win);
+    WINDOW *board = newwin(WINDOW_SIZE + 2, WINDOW_SIZE + 2, 0, 0);
+    box(board, 0 , 0);	
+	wrefresh(board);
 
-    // Receive amount of characters to draw
-    int amount_of_recv;
-    display_t display;
-    zmq_recv(requester, &amount_of_recv, sizeof(int), 0);
-    for (int i = 0; i < amount_of_recv; i++) {
-        zmq_recv(requester, &display, sizeof(display), 0);
-        wmove(my_win, display.pos_x, display.pos_y);
-        waddch(my_win, display.ch | A_BOLD);
-        wrefresh(my_win);
-    }
+    // prints the score
+    WINDOW * score_board = newwin(WINDOW_SIZE + 2, 20, 0, WINDOW_SIZE + 3);
+    box(score_board, 0 , 0);
+    mvwprintw(score_board, 0, 5, "  Scores  ");
+    wrefresh(score_board);
 
-    // Main loop to receive and display messages
+    // Main loop to receive update messages and display changes
     while (1) {
         //Receive update message
         zmq_recv(subscriber, &display, sizeof(display_t), 0);
-        wmove(my_win, display.pos_x, display.pos_y);
-        waddch(my_win, display.ch | A_BOLD);
-        wrefresh(my_win);
+        wmove(board, display.pos_x, display.pos_y);
+        waddch(board, display.ch | A_BOLD);
+        wrefresh(board);
+
+        // Update score
+        mvwprintw(score_board, display.ch - 'a' + 2, 1, "Lizard %c:     ", display.ch);
+        wrefresh(score_board);
+        mvwprintw(score_board, display.ch - 'a' + 2, 11, "%d", display.score);
+        wrefresh(score_board);
     }
 
     // Cleanup and exit
-    zmq_close(requester);
     zmq_close(subscriber);
     zmq_ctx_destroy(context);
-    free(server_req_port);
     free(server_pub_port);
     endwin();
 

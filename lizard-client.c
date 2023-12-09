@@ -7,6 +7,11 @@
 #include "zhelpers.h"
 
 int main(int argc, char *argv[]) {
+    msg_t lizard;
+    reply_t reply;
+    int key;
+    int n = 0;
+
     if (argc != 3) {
         printf("Usage: %s <server_address> <req/rep_port>\n", argv[0]);
         return 1;
@@ -26,12 +31,10 @@ int main(int argc, char *argv[]) {
     assert(rc == 0);
 
     //Send connection message
-    msg_t lizard;
     lizard.type = LIZARD_CONNECT;
     zmq_send(requester, &lizard, sizeof(msg_t), 0);
 
     //Receive reply with assigned letter and password
-    reply_t reply;
     zmq_recv(requester, &reply, sizeof(reply_t), 0);
     lizard.id = reply.id;
     lizard.password = reply.password;
@@ -45,7 +48,6 @@ int main(int argc, char *argv[]) {
         free(server_endpoint);
         return 0;
     }
-    
 
     //Initialize ncurses
     initscr();
@@ -53,12 +55,10 @@ int main(int argc, char *argv[]) {
     keypad(stdscr, TRUE);
     noecho();
 
-    int key;
-    int n = 0;
     while (1) {
         key = getch();	
-
         n++;
+        
         switch (key){
         case KEY_LEFT:
             mvprintw(0,0,"                         ");
