@@ -212,8 +212,8 @@ void move_roach(info_t *move, direction_t direction, info_t lizard_data[]) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("Usage: %s <req_port> <pub_port> <lib_path>\n", argv[0]);
+    if (argc != 3) {
+        printf("Usage: %s <req_port> <pub_port>\n", argv[0]);
         return 1;
     }
 
@@ -231,15 +231,22 @@ int main(int argc, char *argv[]) {
     }
 
     endpoint = (char*) malloc((max(strlen(argv[1]), strlen(argv[2])) + 8) * sizeof(char));
+    if (endpoint == NULL) {
+        printf("Error allocating memory\n");
+        return 1;
+    }
     // open server sockets
 	void *context = zmq_ctx_new ();
+    assert(context != NULL);
     void *responder = zmq_socket (context, ZMQ_REP);
+    assert(responder != NULL);
     sprintf(endpoint, "tcp://*:%s", argv[1]);
-    zmq_bind (responder, endpoint);
+    assert(zmq_bind(responder, endpoint) == 0);
 
     void *publisher = zmq_socket (context, ZMQ_PUB);
+    assert(publisher != NULL);
     sprintf(endpoint, "tcp://*:%s", argv[2]);
-    zmq_bind (publisher, endpoint);
+    assert(zmq_bind(publisher, endpoint) == 0);
 
 	initscr();
 	cbreak();
@@ -248,19 +255,21 @@ int main(int argc, char *argv[]) {
 	noecho();
 
     // creates a window and draws a border
-    WINDOW * board = newwin(WINDOW_SIZE + 2, WINDOW_SIZE + 2, 0, 0);
+    WINDOW *board = newwin(WINDOW_SIZE + 2, WINDOW_SIZE + 2, 0, 0);
+    assert(board != NULL);
     box(board, 0 , 0);
 	wrefresh(board);
 
     // prints the score
-    WINDOW * score_board = newwin(WINDOW_SIZE + 2, 20, 0, WINDOW_SIZE + 3);
+    WINDOW *score_board = newwin(WINDOW_SIZE + 2, 20, 0, WINDOW_SIZE + 3);
+    assert(score_board != NULL);
     box(score_board, 0 , 0);
     mvwprintw(score_board, 0, 5, "  Scores  ");
     wrefresh(score_board);
     
     while (1)
     {
-        zmq_recv(responder, &msg, sizeof(msg_t), 0);
+        assert(zmq_recv(responder, &msg, sizeof(msg_t), 0) == sizeof(msg_t));
         switch (msg.type) {
         case LIZARD_CONNECT:
             if ((lizard = find_lizard(lizard_data)) == -1) {
@@ -333,7 +342,7 @@ int main(int argc, char *argv[]) {
         wrefresh(score_board);
         wrefresh(board);
         reply.score = move->points;
-        zmq_send(responder, &reply, sizeof(reply_t), 0);
+        assert(zmq_send(responder, &reply, sizeof(reply_t), 0) == sizeof(reply_t));
     }
   	endwin();
 

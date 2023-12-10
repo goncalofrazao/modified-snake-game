@@ -17,25 +17,20 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Get Server Address and Port
-    char *server_address = argv[1];
-    char *server_port = argv[2];
-
-    char *server_endpoint = (char*) malloc((strlen(server_address) + strlen(server_port) + 8) * sizeof(char));
-    sprintf(server_endpoint, "tcp://%s:%s", server_address, server_port);
+    char *server_endpoint = (char*) malloc((strlen(argv[1]) + strlen(argv[2]) + 8) * sizeof(char));
+    sprintf(server_endpoint, "tcp://%s:%s", argv[1], argv[2]);
 
     // Connect to reply socket
     void *context = zmq_ctx_new();
     void *requester = zmq_socket(context, ZMQ_REQ);
-    int rc = zmq_connect(requester, server_endpoint);
-    assert(rc == 0);
+    assert(zmq_connect(requester, server_endpoint) == 0);
 
     //Send connection message
     lizard.type = LIZARD_CONNECT;
-    zmq_send(requester, &lizard, sizeof(msg_t), 0);
+    assert(zmq_send(requester, &lizard, sizeof(msg_t), 0) == sizeof(msg_t));
 
     //Receive reply with assigned letter and password
-    zmq_recv(requester, &reply, sizeof(reply_t), 0);
+    assert(zmq_recv(requester, &reply, sizeof(reply_t), 0) == sizeof(reply_t));
     lizard.id = reply.id;
     lizard.password = reply.password;
     lizard.type = LIZARD_MOVE;
@@ -62,28 +57,24 @@ int main(int argc, char *argv[]) {
         switch (key){
         case KEY_LEFT:
             mvprintw(0,0,"                         ");
-            refresh();
             mvprintw(0,0,"Left arrow is pressed");
             refresh();
             lizard.direction = LEFT;
             break;
         case KEY_RIGHT:
             mvprintw(0,0,"                         ");
-            refresh();
             mvprintw(0,0,"Right arrow is pressed");
             refresh();
             lizard.direction = RIGHT;
             break;
         case KEY_DOWN:
             mvprintw(0,0,"                         ");
-            refresh();
             mvprintw(0,0,"Down arrow is pressed");
             refresh();
             lizard.direction = DOWN;
             break;
         case KEY_UP:
             mvprintw(0,0,"                         ");
-            refresh();
             mvprintw(0,0,"Up arrow is pressed");
             refresh();
             lizard.direction = UP;
@@ -91,21 +82,19 @@ int main(int argc, char *argv[]) {
         case 'Q':
         case 'q':
             mvprintw(0,0,"                         ");
-            refresh();
             mvprintw(0,0,"Disconnecting from server");
             refresh();
-            lizard.type = LIZARD_DISCONNECT; 
+            lizard.type = LIZARD_DISCONNECT;
             break;
         }
-            zmq_send(requester, &lizard, sizeof(msg_t), 0);
-            zmq_recv(requester, &reply, sizeof(reply_t), 0);
-            if (key == 'Q' || key == 'q'){
-                break;
-            }
-            mvprintw(1,0, "          ");
-            refresh();
-            mvprintw(1,0, "Score: %d", reply.score);
-            refresh();
+        assert(zmq_send(requester, &lizard, sizeof(msg_t), 0) == sizeof(msg_t));
+        assert(zmq_recv(requester, &reply, sizeof(reply_t), 0) == sizeof(reply_t));
+        if (key == 'Q' || key == 'q'){
+            break;
+        }
+        mvprintw(1,0, "          ");
+        mvprintw(1,0, "Score: %d", reply.score);
+        refresh();
     }
 
     zmq_close(requester);

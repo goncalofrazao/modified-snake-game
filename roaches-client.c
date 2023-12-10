@@ -13,36 +13,36 @@ int main(int argc, char *argv[]) {
     reply_t reply;
     direction_t dir;
     int id;
-    srand(time(NULL));
-    int num_roaches = rand() % MAX_ROACHES + 1;
-    msg_t *roaches = (msg_t*) malloc(num_roaches * sizeof(msg_t));
+    int num_roaches;
+    msg_t *roaches;
 
     if (argc != 3) {
         printf("Usage: %s <server_address> <req/rep_port>\n", argv[0]);
         return 1;
     }
 
-    // Get Server Address and Port
-    char *server_address = argv[1];
-    char *server_port = argv[2];
-
-    char *server_endpoint = (char*) malloc((strlen(server_address) + strlen(server_port) + 8) * sizeof(char));
-    sprintf(server_endpoint, "tcp://%s:%s", server_address, server_port);
+    char *server_endpoint = (char*) malloc((strlen(argv[1]) + strlen(argv[2]) + 8) * sizeof(char));
+    sprintf(server_endpoint, "tcp://%s:%s", argv[1], argv[2]);
 
     // Create socket
     void *context = zmq_ctx_new();
     void *requester = zmq_socket(context, ZMQ_REQ);
-    int rc = zmq_connect(requester, server_endpoint);
-    assert(rc == 0);
-        
+    assert(zmq_connect(requester, server_endpoint) == 0);
+    
+    srand(time(NULL));
+    // num_roaches = rand() % MAX_ROACHES + 1;
+    num_roaches = 3;
+    roaches = (msg_t*) malloc(num_roaches * sizeof(msg_t));
     //Connect every roach to server and get password
     for (int i = 0; i < num_roaches; i++) {
         roaches[i].type = ROACH_CONNECT;
         roaches[i].id = rand() % 5 + '1';
-        zmq_send(requester, &roaches[i], sizeof(roaches[i]), 0);
-        zmq_recv(requester, &reply, sizeof(reply), 0);
+        assert(zmq_send(requester, &roaches[i], sizeof(roaches[i]), 0) == sizeof(roaches[i]));
+
+        assert(zmq_recv(requester, &reply, sizeof(reply), 0) == sizeof(reply));
         roaches[i].password = reply.password;
         roaches[i].type = ROACH_MOVE;
+
         //If field is full of roaches, stop creating roaches
         if (roaches[i].password == -1 && i != 0){
             printf("Field full of roaches!\n");
@@ -84,8 +84,8 @@ int main(int argc, char *argv[]) {
 
         // Send movement to server
         roaches[id].direction = dir;
-        zmq_send(requester, &roaches[id], sizeof(msg_t), 0);
-        zmq_recv(requester, &reply, sizeof(reply_t), 0);
+        assert(zmq_send(requester, &roaches[id], sizeof(msg_t), 0) == sizeof(msg_t));
+        assert(zmq_recv(requester, &reply, sizeof(reply_t), 0) == sizeof(reply_t));
     }
 
     zmq_close(requester);
