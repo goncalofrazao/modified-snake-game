@@ -1,19 +1,19 @@
 all: lizard-client roaches-client display-app lizardsnroaches-server
 
-lizard-client: lizard-client.c zhelpers.h lar-defs.h
-	gcc lizard-client.c -o lizard-client -lncurses -lzmq -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
+LDFLAGS = -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib
+CFLAGS = -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
+
+lizard-client: lizard/lizard-client.c lar-defs.h
+	gcc lizard/lizard-client.c -o lizard/lizard-client -lncurses -lzmq $(LDFLAGS) $(CFLAGS)
 	
-roaches-client: roaches-client.c zhelpers.h lar-defs.h
-	gcc roaches-client.c -o roaches-client -lncurses -lzmq -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
+roaches-client: roaches/roaches-client.c lar-defs.h
+	gcc roaches/roaches-client.c -o roaches/roaches-client -lncurses -lzmq $(LDFLAGS) $(CFLAGS)
 
-display-app: display-app.c zhelpers.h lar-defs.h
-	gcc display-app.c -o display-app -lncurses -lzmq -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
+display-app: display/display-app.c lar-defs.h
+	gcc display/display-app.c -o display/display-app -lncurses -lzmq $(LDFLAGS) $(CFLAGS)
 
-lizardsnroaches-server: lizardsnroaches-server.c zhelpers.h lar-defs.h
-	gcc lizardsnroaches-server.c -o lizardsnroaches-server -lncurses -lzmq -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
-
-lists-matrix: lists-matrix.c
-	gcc lists-matrix.c -o lists-matrix.so -ldl -shared -fPIC
+lizardsnroaches-server: server/lizardsnroaches-server.c lar-defs.h
+	gcc server/lizardsnroaches-server.c -o server/lizardsnroaches-server -lncurses -lzmq $(LDFLAGS) $(CFLAGS)
 
 clean:
-	rm -rf lizard-client roaches-client display-app lizardsnroaches-server *.dSYM
+	rm -rf lizard/lizard-client roaches/roaches-client display/display-app server/lizardsnroaches-server *.dSYM

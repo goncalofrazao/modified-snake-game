@@ -5,9 +5,12 @@
 #include <fcntl.h>  
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <assert.h>
+#include <string.h>
+#include <time.h>
+#include <zmq.h>
 
-#include "lar-defs.h"
-#include "zhelpers.h"
+#include "../lar-defs.h"
 
 #define LIZARDS_NUMBER 26
 #define ROACHES_NUMBER WINDOW_SIZE*WINDOW_SIZE/3

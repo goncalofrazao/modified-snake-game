@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ncurses.h>
+#include <assert.h>
+#include <zmq.h>
 
-#include "lar-defs.h"
-#include "zhelpers.h"
+#include "../lar-defs.h"
 
 int main(int argc, char *argv[]) {
     msg_t lizard;

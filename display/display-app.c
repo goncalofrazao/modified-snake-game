@@ -3,9 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <ncurses.h>
+#include <assert.h>
+#include <zmq.h>
 
-#include "zhelpers.h"
-#include "lar-defs.h"
+#include "../lar-defs.h"
 
 int main(int argc, char *argv[]) {
     display_t display;

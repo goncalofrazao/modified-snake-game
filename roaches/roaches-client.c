@@ -3,9 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <zmq.h>
+#include <assert.h>
 
-#include "zhelpers.h"
-#include "lar-defs.h"
+#include "../lar-defs.h"
 
 #define MAX_ROACHES 10
 
