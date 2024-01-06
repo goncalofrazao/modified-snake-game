@@ -1,0 +1,41 @@
+syntax = "proto2";
+
+enum Direction {
+  UP = 0;
+  DOWN = 1;
+  LEFT = 2;
+  RIGHT = 3;
+}
+
+enum Type {
+    LIZARD_CONNECT = 0;
+    ROACH_CONNECT = 1;
+    WASP_CONNECT = 2;
+    LIZARD_MOVE = 3;
+    ROACH_MOVE = 4;
+    WASP_MOVE = 5;
+    LIZARD_DISCONNECT = 6;
+    ROACH_DISCONNECT = 7;
+    WASP_DISCONNECT = 8;
+    DISPLAY_UPDATE = 9;
+}
+
+message request_message {
+    optional string id = 1;
+    optional uint32 password = 2;
+    optional uint32 direction = 3;
+}
+
+message reply_message {
+    required uint32 success = 1;
+    optional string id = 2;
+    optional uint32 password = 3;
+    optional uint32 score = 4;
+}
+
+message display_update_message {
+    required string ch = 1;
+    required uint32 pos_x = 2;
+    required uint32 pos_y = 3;
+    optional uint32 score = 4;
+}
