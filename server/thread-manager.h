@@ -15,6 +15,6 @@ typedef struct _proxy_manager ProxyManager;
 ThreadManager *init_thread_manager(void *context, WINDOW *board, WINDOW *score_board, void *publisher);
 void *run_proxy(void *arg);
 void *lizard_handle(void *arg);
-void *roach_handle(void *arg);
+void *bots_handle(void *arg);
 
 #endif // __SERVER_THREAD_MANAGER_H__

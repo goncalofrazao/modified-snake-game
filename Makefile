@@ -1,4 +1,4 @@
-all: lizard-client roaches-client lizardsnroaches-server
+all: lizard-client roaches-client wasps-client lizardsnroaches-server
 
 LDFLAGS = -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
 
@@ -15,7 +15,11 @@ roaches-client: roaches/roaches-client.c
 	gcc roaches/*.c lar-defs.pb-c.c -o roaches-client -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
 
 lizardsnroaches-server: server/lizardsnroaches-server.c
-	gcc server/*.c lar-defs.pb-c.c -o lizardsnroaches-server -lncurses -lzmq -lprotobuf-c -lpthread $(LDFLAGS) $(PROTOFLAGS)
+	gcc server/*.c lar-defs.pb-c.c -g -o lizardsnroaches-server -lncurses -lzmq -lprotobuf-c -lpthread $(LDFLAGS) $(PROTOFLAGS)
+
+wasps-client: wasps/wasps-client.c
+	gcc wasps/*.c lar-defs.pb-c.c -o wasps-client -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
 
 clean:
-	rm -rf lizard-client roaches-client lizardsnroaches-server *.dSYM
+	rm -rf lizard-client roaches-client wasps-client lizardsnroaches-server *.dSYM
+

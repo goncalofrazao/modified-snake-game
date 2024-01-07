@@ -9,9 +9,14 @@
 
 #define WINDOW_SIZE 30
 
-void *context;
-bool disconnected = false;
+static void *context;
 
+/**
+ * @brief Handles lizard client
+ *
+ * @param arg server address
+ * @return void*
+ */
 void *handle_lizard(void *arg)
 {
     char *server_req = (char *)arg;
@@ -37,26 +42,29 @@ void *handle_lizard(void *arg)
     ReplyMessage *reply;
     RECV_UNPACK__REPLY_MESSAGE(requester, reply);
 
-    lizard.id = strdup(reply->id);
-    lizard.password = reply->password;
-    lizard.has_password = 1;
-
     // check if server is full
     if (reply->success == 0)
     {
         zmq_close(requester);
-        return 0;
+        free(server_req);
+        exit(0);
     }
+
+    // set lizard letter and password
+    lizard.id = strdup(reply->id);
+    lizard.password = reply->password;
+    lizard.has_password = 1;
 
     msgtype = TYPE__LIZARD_MOVE;
     int key;
 
-    // MAIN LOOP
+    // MAIN LOOP to get key pressed and send move/disconnect message
     while (1)
     {
         // get key pressed
         key = getch();
 
+        // check if key is an arrow key or q or Q
         switch (key)
         {
         case KEY_LEFT:
@@ -74,8 +82,9 @@ void *handle_lizard(void *arg)
         case 'Q':
         case 'q':
             msgtype = TYPE__LIZARD_DISCONNECT;
-            disconnected = true;
             break;
+        default:
+            continue;
         }
 
         // send move/disconnect message
@@ -85,8 +94,10 @@ void *handle_lizard(void *arg)
         PACK__REQUEST_MESSAGE(lizard, buffer, packed_size);
         SEND__MESSAGE(requester, buffer, packed_size);
 
+        // receive reply message
         RECV_UNPACK__REPLY_MESSAGE(requester, reply);
 
+        // if q or Q was pressed, exit
         if (key == 'Q' || key == 'q')
         {
             break;
@@ -97,9 +108,15 @@ void *handle_lizard(void *arg)
     zmq_close(requester);
     free(server_req);
 
-    return 0;
+    exit(0);
 }
 
+/**
+ * @brief Handles board and scoreboard display
+ *
+ * @param arg server address
+ * @return void*
+ */
 void *handle_display(void *arg)
 {
     char *server_sub = (char *)arg;
@@ -111,6 +128,7 @@ void *handle_display(void *arg)
 
     // initialize ncurses
     initscr();
+    clear();
     curs_set(0);
     cbreak();
     keypad(stdscr, TRUE);
@@ -130,11 +148,13 @@ void *handle_display(void *arg)
     DisplayUpdateMessage *update;
     char ch;
     // MAIN LOOP to receive update messages and display them
-    while (!disconnected)
+    while (1)
     {
+        // receive display update message
         RECV_UNPACK__DISPLAY_UPDATE_MESSAGE(subscriber, update);
         ch = strdup(update->ch)[0];
 
+        // draw lizard
         wmove(board, update->pos_x, update->pos_y);
         waddch(board, ch);
         wrefresh(board);
@@ -145,8 +165,15 @@ void *handle_display(void *arg)
             continue;
         }
 
+        // draw box around board and score board
+        box(board, 0, 0);
+        box(score_board, 0, 0);
+        mvwprintw(score_board, 0, 5, "  Scores  ");
+        wrefresh(board);
+        wrefresh(score_board);
+
         // update score
-        mvwprintw(score_board, ch - 'a' + 2, 1, "Lizard %c:     ", ch);
+        mvwprintw(score_board, ch - 'a' + 2, 1, "Lizard %c:         ", ch);
         wrefresh(score_board);
         mvwprintw(score_board, ch - 'a' + 2, 11, "%d", update->score);
         wrefresh(score_board);
@@ -160,8 +187,17 @@ void *handle_display(void *arg)
     return 0;
 }
 
+/**
+ * @brief creates a lizard client and connects to server to play the game
+ * displays the board and score board
+ *
+ * @param argc
+ * @param argv server address, request port, subscriber port
+ * @return int error code (0 = success)
+ */
 int main(int argc, char *argv[])
 {
+    // initialize zmq context
     context = zmq_ctx_new();
 
     // arguments check

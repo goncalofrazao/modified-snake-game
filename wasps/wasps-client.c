@@ -8,65 +8,65 @@
 
 #include "../snd_rcv_proto.h"
 
-#define MAX_ROACHES 10
+#define MAX_WASPS 10
 
 static Type msgtype = TYPE__BOT_CONNECT;
-static RequestMessage *roaches;
+static RequestMessage *wasps;
 static ReplyMessage *reply;
 static void *buffer;
 static size_t packed_size;
 static int id;
-static int num_roaches;
+static int num_wasps;
 
 /**
- * @brief creates a roach client and connects to server to add roaches to the game
+ * @brief
  *
- * @param arg request socket
- * @return int exit code (0 = success)
+ * @param arg requester socket
+ * @return void*
  */
-void *handle_roach(void *arg)
+void *handle_wasp(void *arg)
 {
     void *requester = (void *)arg;
 
-    // randomly choose number of roaches
+    // randomly choose number of wasps
     srand(time(NULL));
-    num_roaches = rand() % MAX_ROACHES + 1;
-    roaches = (RequestMessage *)malloc(num_roaches * sizeof(RequestMessage));
+    num_wasps = rand() % MAX_WASPS + 1;
+    wasps = (RequestMessage *)malloc(num_wasps * sizeof(RequestMessage));
 
-    // connect possible roaches to server
-    for (int i = 0; i < num_roaches; i++)
+    // connect possible wasps to server
+    for (int i = 0; i < num_wasps; i++)
     {
         // connect message
         zmq_send(requester, &msgtype, sizeof(Type), ZMQ_SNDMORE);
-        request_message__init(&roaches[i]);
-        roaches[i].id = (char *)malloc(2 * sizeof(char));
-        roaches[i].id[0] = rand() % 5 + '1';
-        roaches[i].id[1] = '\0';
-        roaches[i].has_direction = 0;
-        roaches[i].has_password = 0;
-        PACK__REQUEST_MESSAGE(roaches[i], buffer, packed_size);
+        request_message__init(&wasps[i]);
+        wasps[i].id = (char *)malloc(2 * sizeof(char));
+        wasps[i].id[0] = '#';
+        wasps[i].id[1] = '\0';
+        wasps[i].has_direction = 0;
+        wasps[i].has_password = 0;
+        PACK__REQUEST_MESSAGE(wasps[i], buffer, packed_size);
         SEND__MESSAGE(requester, buffer, packed_size);
 
         // receive password
         RECV_UNPACK__REPLY_MESSAGE(requester, reply);
 
         // save password
-        roaches[i].password = reply->password;
-        roaches[i].has_password = 1;
+        wasps[i].password = reply->password;
+        wasps[i].has_password = 1;
 
         // full field
-        if (roaches[i].password == 0 && i != 0)
+        if (wasps[i].password == 0 && i != 0)
         {
-            printf("Roaches - Field full!\n");
-            num_roaches = i;
-            printf("Roaches - %d roaches connected\n", num_roaches);
-            roaches = (RequestMessage *)realloc(roaches, num_roaches * sizeof(RequestMessage));
+            printf("Wasps - Field full!\n");
+            num_wasps = i;
+            printf("Wasps - %d wasps connected\n", num_wasps);
+            wasps = (RequestMessage *)realloc(wasps, num_wasps * sizeof(RequestMessage));
             break;
         }
-        else if (roaches[i].password == 0 && i == 0)
+        else if (wasps[i].password == 0 && i == 0)
         {
-            printf("Roaches - Field full!\n");
-            free(roaches);
+            printf("Wasps - Field full!\n");
+            free(wasps);
             return 0;
         }
     }
@@ -76,29 +76,29 @@ void *handle_roach(void *arg)
     // generate random movements
     while (1)
     {
-        // random roach
-        id = rand() % num_roaches;
+        // random wasp
+        id = rand() % num_wasps;
 
         // sleep for a random period of time
         usleep(random() % 700000);
 
         // generate random direction
-        roaches[id].direction = (Direction)(rand() % 4);
-        roaches[id].has_direction = 1;
+        wasps[id].direction = (Direction)(rand() % 4);
+        wasps[id].has_direction = 1;
 
-        switch (roaches[id].direction)
+        switch (wasps[id].direction)
         {
         case DIRECTION__LEFT:
-            printf("Roach %d Going Left\n", id);
+            printf("Wasp %d Going Left\n", id);
             break;
         case DIRECTION__RIGHT:
-            printf("Roach %d Going Right\n", id);
+            printf("Wasp %d Going Right\n", id);
             break;
         case DIRECTION__DOWN:
-            printf("Roach %d Going Down\n", id);
+            printf("Wasp %d Going Down\n", id);
             break;
         case DIRECTION__UP:
-            printf("Roach %d Going Up\n", id);
+            printf("Wasp %d Going Up\n", id);
             break;
         }
 
@@ -106,7 +106,7 @@ void *handle_roach(void *arg)
         msgtype = TYPE__BOT_MOVE;
         zmq_send(requester, &msgtype, sizeof(Type), ZMQ_SNDMORE);
 
-        PACK__REQUEST_MESSAGE(roaches[id], buffer, packed_size);
+        PACK__REQUEST_MESSAGE(wasps[id], buffer, packed_size);
         SEND__MESSAGE(requester, buffer, packed_size);
 
         // receive reply
@@ -117,7 +117,7 @@ void *handle_roach(void *arg)
 }
 
 /**
- * @brief creates a roach client and connects to server to add roaches to the game
+ * @brief creates a wasp client and connects to server to add wasps to the game
  *
  * @param argc
  * @param argv server address and request port
@@ -142,8 +142,8 @@ int main(int argc, char *argv[])
     assert(zmq_connect(requester, server_endpoint) == 0);
 
     // create threads
-    pthread_t roach_thread;
-    pthread_create(&roach_thread, NULL, handle_roach, (void *)requester);
+    pthread_t wasp_thread;
+    pthread_create(&wasp_thread, NULL, handle_wasp, (void *)requester);
 
     // disconnect if enter is pressed
     char key;
@@ -153,13 +153,13 @@ int main(int argc, char *argv[])
 
         if (key == '\n')
         {
-            printf("Roaches - Quitting...\n");
+            printf("Wasps - Quitting...\n");
             msgtype = TYPE__BOT_DISCONNECT;
-            for (int i = 0; i < num_roaches; i++)
+            for (int i = 0; i < num_wasps; i++)
             {
                 // send disconnect message
                 zmq_send(requester, &msgtype, sizeof(Type), ZMQ_SNDMORE);
-                PACK__REQUEST_MESSAGE(roaches[i], buffer, packed_size);
+                PACK__REQUEST_MESSAGE(wasps[i], buffer, packed_size);
                 SEND__MESSAGE(requester, buffer, packed_size);
 
                 // receive reply
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     zmq_close(requester);
     zmq_ctx_destroy(context);
     free(server_endpoint);
-    free(roaches);
+    free(wasps);
     free(reply);
 
     return 0;

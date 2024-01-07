@@ -1,11 +1,13 @@
 #include "lizard-lib.h"
 #include "lar-defs.h"
-#include "roaches-lib.h"
+#include "bots-lib.h"
 
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
+#include <unistd.h>
 
 #define LIZARDS_NUMBER 26
 
@@ -66,13 +68,14 @@ void init_lizard(void *lizard_, int id)
     lizard->id[1] = '\0';
     lizard->password = rand();
     lizard->points = 0;
+    lizard->eaten = time(NULL);
 
     // find free position
     do
     {
         lizard->pos_x = rand() % WINDOW_SIZE + 1;
         lizard->pos_y = rand() % WINDOW_SIZE + 1;
-    } while (lizard_here(lizard->id[0], lizard->pos_x, lizard->pos_y));
+    } while (lizard_here(lizard->id[0], lizard->pos_x, lizard->pos_y) || wasp_here(lizard->pos_x, lizard->pos_y));
 
     // set random direction
     lizard->direction = rand() % 4;
@@ -175,6 +178,7 @@ void draw_lizard(void *publisher, void *lizard_, WINDOW *board, int delete)
 void move_lizard(void *move_, Direction direction)
 {
     info_t *move = (info_t *)move_;
+    move->eaten = time(NULL);
     info_t aux;
     int points;
     int id = move->id[0] - 'a';
@@ -182,6 +186,13 @@ void move_lizard(void *move_, Direction direction)
 
     // check if lizard is in the way
     new_position(&aux, direction);
+    if (wasp_here(aux.pos_x, aux.pos_y))
+    {
+        move->points -= 10;
+        move->direction = direction;
+        return;
+    }
+
     for (int i = 0; i < LIZARDS_NUMBER; i++)
     {
         if (lizard_data[i].id[0] != '0' && lizard_data[i].pos_x == aux.pos_x && lizard_data[i].pos_y == aux.pos_y)
@@ -226,6 +237,8 @@ void *get_lizard(int id)
 void fill_lizard_data(void *move, ReplyMessage *send_msg)
 {
     fill_id_and_password((info_t *)move, send_msg);
+    send_msg->has_score = 1;
+    send_msg->score = ((info_t *)move)->points;
 }
 
 /**
@@ -259,4 +272,55 @@ void delete_lizard(void *lizard_)
     pthread_mutex_lock(&lizard_data_lock[id]);
     lizard->id[0] = '0';
     pthread_mutex_unlock(&lizard_data_lock[id]);
+}
+
+/**
+ * @brief Finds a lizard in a given position and stungs it
+ * if there is one
+ *
+ * @param pos_x position x to stung
+ * @param pos_y position y to stung
+ * @return int 1 if stung, 0 otherwise
+ */
+int stung_lizard(int pos_x, int pos_y)
+{
+    for (int i = 0; i < LIZARDS_NUMBER; i++)
+    {
+        if (lizard_data[i].id[0] != '0' && lizard_data[i].pos_x == pos_x && lizard_data[i].pos_y == pos_y)
+        {
+            pthread_mutex_lock(&lizard_data_lock[i]);
+            lizard_data[i].points -= 10;
+            pthread_mutex_unlock(&lizard_data_lock[i]);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/**
+ * @brief Disconnects lizards offline
+ *
+ * @param arg publisher socket
+ * @return no return
+ */
+void *offline_lizards(void *arg)
+{
+    void *publisher = ((void **)arg)[0];
+    WINDOW *board = ((WINDOW **)arg)[1];
+    while (1)
+    {
+        sleep(3);
+        for (int i = 0; i < LIZARDS_NUMBER; i++)
+        {
+            if (lizard_data[i].id[0] != '0' && time(NULL) - lizard_data[i].eaten > 20)
+            {
+                pthread_mutex_lock(&lizard_data_lock[i]);
+                lizard_data[i].id[0] = '0';
+                pthread_mutex_unlock(&lizard_data_lock[i]);
+                draw_lizard(publisher, &lizard_data[i], board, 1);
+                wrefresh(board);
+            }
+        }
+    }
+    return (void *)NULL;
 }

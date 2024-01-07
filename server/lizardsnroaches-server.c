@@ -11,17 +11,19 @@
 #include <pthread.h>
 
 #include "../snd_rcv_proto.h"
-#include "roaches-lib.h"
+#include "bots-lib.h"
 #include "lizard-lib.h"
 #include "thread-manager.h"
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define LIZARDS_THREADS 5
-#define ROACHES_THREADS 5
+#define BOTS_THREADS 5
 
 /**
  * @brief receives and processes messages from clients
+ * alocates a multithreaded server of a snake game
+ * with 3 different types of clients: lizards, roaches and wasps.
  *
  * @param argc
  * @param argv replier and publisher ports
@@ -44,7 +46,7 @@ int main(int argc, char *argv[])
 
     // initialize lizards and roaches
     init_lizards();
-    init_roaches();
+    init_bots();
 
     // open server sockets
     endpoint = (char *)malloc((MAX(strlen(argv[1]), strlen(argv[2])) + 8) * sizeof(char));
@@ -69,16 +71,16 @@ int main(int argc, char *argv[])
     rc = zmq_bind(lizard_proxy_manager.backend, "inproc://lizard-back-end");
     assert(rc == 0);
 
-    // roach sockets
+    // bots sockets
     sprintf(endpoint, "tcp://*:%s", argv[2]);
-    ProxyManager roaches_proxy_manager;
-    roaches_proxy_manager.frontend = zmq_socket(context, ZMQ_ROUTER);
-    assert(roaches_proxy_manager.frontend != NULL);
-    rc = zmq_bind(roaches_proxy_manager.frontend, endpoint);
+    ProxyManager bots_proxy_manager;
+    bots_proxy_manager.frontend = zmq_socket(context, ZMQ_ROUTER);
+    assert(bots_proxy_manager.frontend != NULL);
+    rc = zmq_bind(bots_proxy_manager.frontend, endpoint);
     assert(rc == 0);
-    roaches_proxy_manager.backend = zmq_socket(context, ZMQ_DEALER);
-    assert(roaches_proxy_manager.backend != NULL);
-    rc = zmq_bind(roaches_proxy_manager.backend, "inproc://roaches-back-end");
+    bots_proxy_manager.backend = zmq_socket(context, ZMQ_DEALER);
+    assert(bots_proxy_manager.backend != NULL);
+    rc = zmq_bind(bots_proxy_manager.backend, "inproc://bots-back-end");
     assert(rc == 0);
 
     // screen sockets
@@ -90,6 +92,7 @@ int main(int argc, char *argv[])
 
     // initialize ncurses
     initscr();
+    clear();
     cbreak();
     curs_set(0);
     keypad(stdscr, TRUE);
@@ -108,6 +111,17 @@ int main(int argc, char *argv[])
 
     ThreadManager *thread_manager = init_thread_manager(context, board, score_board, publisher);
 
+    void **offline_lizard_args = (void **)malloc(2 * sizeof(void *));
+    if (offline_lizard_args == NULL)
+    {
+        printf("Error allocating memory\n");
+        return 1;
+    }
+    offline_lizard_args[0] = (void *)publisher;
+    offline_lizard_args[1] = (void *)board;
+    pthread_t offline_lizard_thread;
+    pthread_create(&offline_lizard_thread, NULL, offline_lizards, (void *)offline_lizard_args);
+
     // create lizard threads
     pthread_t lizard_threads[LIZARDS_THREADS];
     for (int i = 0; i < LIZARDS_THREADS; i++)
@@ -116,26 +130,23 @@ int main(int argc, char *argv[])
     }
 
     // create roach threads
-    pthread_t roach_threads[ROACHES_THREADS];
-    for (int i = 0; i < ROACHES_THREADS; i++)
+    pthread_t roach_threads[BOTS_THREADS];
+    for (int i = 0; i < BOTS_THREADS; i++)
     {
-        pthread_create(&roach_threads[i], NULL, roach_handle, (void *)thread_manager);
+        pthread_create(&roach_threads[i], NULL, bots_handle, (void *)thread_manager);
     }
 
     // create proxy threads
     pthread_t lizard_proxy_thread;
     pthread_create(&lizard_proxy_thread, NULL, run_proxy, (void *)&lizard_proxy_manager);
     pthread_t roach_proxy_thread;
-    pthread_create(&roach_proxy_thread, NULL, run_proxy, (void *)&roaches_proxy_manager);
+    pthread_create(&roach_proxy_thread, NULL, run_proxy, (void *)&bots_proxy_manager);
 
     // wait for threads to finish
     pthread_join(lizard_proxy_thread, NULL);
 
     // cleanup
     endwin();
-
-    // close_proxy_manager(lizard_proxy_manager);
-    // close_proxy_manager(roach_proxy_manager);
     zmq_close(publisher);
     zmq_ctx_destroy(context);
 

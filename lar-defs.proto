@@ -9,15 +9,12 @@ enum Direction {
 
 enum Type {
     LIZARD_CONNECT = 0;
-    ROACH_CONNECT = 1;
-    WASP_CONNECT = 2;
-    LIZARD_MOVE = 3;
-    ROACH_MOVE = 4;
-    WASP_MOVE = 5;
-    LIZARD_DISCONNECT = 6;
-    ROACH_DISCONNECT = 7;
-    WASP_DISCONNECT = 8;
-    DISPLAY_UPDATE = 9;
+    BOT_CONNECT = 1;
+    LIZARD_MOVE = 2;
+    BOT_MOVE = 3;
+    LIZARD_DISCONNECT = 4;
+    BOT_DISCONNECT = 5;
+    DISPLAY_UPDATE = 6;
 }
 
 message request_message {

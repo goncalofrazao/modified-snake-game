@@ -392,34 +392,28 @@ const ProtobufCEnumDescriptor direction__descriptor =
   direction__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue type__enum_values_by_number[10] =
+static const ProtobufCEnumValue type__enum_values_by_number[7] =
 {
   { "LIZARD_CONNECT", "TYPE__LIZARD_CONNECT", 0 },
-  { "ROACH_CONNECT", "TYPE__ROACH_CONNECT", 1 },
-  { "WASP_CONNECT", "TYPE__WASP_CONNECT", 2 },
-  { "LIZARD_MOVE", "TYPE__LIZARD_MOVE", 3 },
-  { "ROACH_MOVE", "TYPE__ROACH_MOVE", 4 },
-  { "WASP_MOVE", "TYPE__WASP_MOVE", 5 },
-  { "LIZARD_DISCONNECT", "TYPE__LIZARD_DISCONNECT", 6 },
-  { "ROACH_DISCONNECT", "TYPE__ROACH_DISCONNECT", 7 },
-  { "WASP_DISCONNECT", "TYPE__WASP_DISCONNECT", 8 },
-  { "DISPLAY_UPDATE", "TYPE__DISPLAY_UPDATE", 9 },
+  { "BOT_CONNECT", "TYPE__BOT_CONNECT", 1 },
+  { "LIZARD_MOVE", "TYPE__LIZARD_MOVE", 2 },
+  { "BOT_MOVE", "TYPE__BOT_MOVE", 3 },
+  { "LIZARD_DISCONNECT", "TYPE__LIZARD_DISCONNECT", 4 },
+  { "BOT_DISCONNECT", "TYPE__BOT_DISCONNECT", 5 },
+  { "DISPLAY_UPDATE", "TYPE__DISPLAY_UPDATE", 6 },
 };
 static const ProtobufCIntRange type__value_ranges[] = {
-{0, 0},{0, 10}
+{0, 0},{0, 7}
 };
-static const ProtobufCEnumValueIndex type__enum_values_by_name[10] =
+static const ProtobufCEnumValueIndex type__enum_values_by_name[7] =
 {
-  { "DISPLAY_UPDATE", 9 },
+  { "BOT_CONNECT", 1 },
+  { "BOT_DISCONNECT", 5 },
+  { "BOT_MOVE", 3 },
+  { "DISPLAY_UPDATE", 6 },
   { "LIZARD_CONNECT", 0 },
-  { "LIZARD_DISCONNECT", 6 },
-  { "LIZARD_MOVE", 3 },
-  { "ROACH_CONNECT", 1 },
-  { "ROACH_DISCONNECT", 7 },
-  { "ROACH_MOVE", 4 },
-  { "WASP_CONNECT", 2 },
-  { "WASP_DISCONNECT", 8 },
-  { "WASP_MOVE", 5 },
+  { "LIZARD_DISCONNECT", 4 },
+  { "LIZARD_MOVE", 2 },
 };
 const ProtobufCEnumDescriptor type__descriptor =
 {
@@ -428,9 +422,9 @@ const ProtobufCEnumDescriptor type__descriptor =
   "Type",
   "Type",
   "",
-  10,
+  7,
   type__enum_values_by_number,
-  10,
+  7,
   type__enum_values_by_name,
   1,
   type__value_ranges,

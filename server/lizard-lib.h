@@ -15,5 +15,7 @@ void *get_lizard_id(void *lizard_);
 void fill_lizard_data(void *move, ReplyMessage *send_msg);
 int valid_lizard(RequestMessage *recv_msg);
 void delete_lizard(void *lizard_);
+int stung_lizard(int pos_x, int pos_y);
+void *offline_lizards(void *arg);
 
 #endif // __LIZARD_LIB_H__
