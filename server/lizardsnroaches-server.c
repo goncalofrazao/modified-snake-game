@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     init_lizards();
+    init_roaches();
 
     // open server sockets
     endpoint = (char *)malloc((MAX(strlen(argv[1]), strlen(argv[2])) + 8) * sizeof(char));
@@ -130,26 +131,25 @@ int main(int argc, char *argv[])
             mvwprintw(score_board, send_msg.id[0] - 'a' + 2, 1, "Lizard %c: %d", send_msg.id[0], send_msg.score);
             break;
         case TYPE__ROACH_CONNECT:
-            // RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // // server full
-            // if (roaches == ROACHES_NUMBER)
-            // {
-            //     INVALID_MSG(responder, send_msg);
-            //     continue;
-            // }
-            // move = &roach_data[roaches];
+            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
+            // server full
+            if (roaches_full())
+            {
+                INVALID_MSG(responder, send_msg);
+                continue;
+            }
+            move = get_next_free_roach();
 
-            // // generate roach data
-            // init_roach(move, lizard_data, &roaches, recv_msg);
+            // generate roach data
+            init_roach(move, recv_msg);
 
-            // // draw roach
-            // draw_roach(publisher, move, board, 0);
+            // draw roach
+            draw_roach(publisher, move, board, 0);
 
-            // send_msg.has_password = 1;
-            // send_msg.has_score = 0;
-            // send_msg.success = 1;
-            // send_msg.id = strdup(move->id);
-            // send_msg.password = move->password;
+            send_msg.has_password = 1;
+            send_msg.has_score = 0;
+            send_msg.success = 1;
+            fill_roach_data(move, &send_msg);
             break;
         case TYPE__LIZARD_MOVE:
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
@@ -181,43 +181,35 @@ int main(int argc, char *argv[])
             mvwprintw(score_board, send_msg.id[0] - 'a' + 2, 11, "%d", send_msg.score);
             break;
         case TYPE__ROACH_MOVE:
-            // RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // // validate roach
-            // roach = find_roach(roach_data, roaches, recv_msg);
-            // if (roach == -1)
-            // {
-            //     INVALID_MSG(responder, send_msg);
-            //     continue;
-            // }
-            // move = &roach_data[roach];
+            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
+            // validate roach
+            move = find_roach(recv_msg);
+            if (move == NULL)
+            {
+                INVALID_MSG(responder, send_msg);
+                continue;
+            }
 
-            // if (move->pos_x != -1)
-            // {
-            //     // delete previous position
-            //     draw_roach(publisher, move, board, 1);
-            // }
-            // else if (move->pos_x == -1 && time(NULL) - move->eaten > 5)
-            // {
-            //     // respawn roach
-            //     move->pos_x = rand() % WINDOW_SIZE + 1;
-            //     move->pos_y = rand() % WINDOW_SIZE + 1;
-            // }
-            // else
-            // {
-            //     INVALID_MSG(responder, send_msg);
-            //     continue;
-            // }
+            if (roach_dead(move))
+            {
+                // delete previous position
+                INVALID_MSG(responder, send_msg);
+                continue;
+            }
 
-            // // move roach
-            // move_roach(move, recv_msg->direction, lizard_data);
+            // delete roach
+            draw_roach(publisher, move, board, 1);
 
-            // // draw new position
-            // draw_roach(publisher, move, board, 0);
+            // move roach
+            move_roach(move, recv_msg->direction);
 
-            // send_msg.has_password = 0;
-            // send_msg.has_score = 0;
-            // send_msg.success = 1;
-            // send_msg.id = NULL;
+            // draw new position
+            draw_roach(publisher, move, board, 0);
+
+            send_msg.has_password = 0;
+            send_msg.has_score = 0;
+            send_msg.success = 1;
+            send_msg.id = NULL;
             break;
         case TYPE__LIZARD_DISCONNECT:
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);

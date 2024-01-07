@@ -73,3 +73,16 @@ void new_position(info_t *move, Direction direction)
         break;
     }
 }
+
+/**
+ * @brief fills id and password fields of send_msg
+ *
+ * @param move lizard or roach data
+ * @param send_msg message to fill
+ */
+void fill_id_and_password(info_t *move, ReplyMessage *send_msg)
+{
+    send_msg->has_password = 1;
+    send_msg->password = move->password;
+    send_msg->id = strdup(move->id);
+}

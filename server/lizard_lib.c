@@ -210,9 +210,7 @@ void *get_lizard(int id)
  */
 void fill_lizard_data(void *move, ReplyMessage *send_msg)
 {
-    info_t *lizard = (info_t *)move;
-    send_msg->password = lizard->password;
-    send_msg->id = strdup(lizard->id);
+    fill_id_and_password((info_t *)move, send_msg);
 }
 
 /**

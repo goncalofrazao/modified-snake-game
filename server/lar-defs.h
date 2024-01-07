@@ -18,5 +18,6 @@ typedef struct info_t
 
 void publisher_update(info_t *move, char ch, void *publisher);
 void new_position(info_t *move, Direction direction);
+void fill_id_and_password(info_t *move, ReplyMessage *send_msg);
 
 #endif // __LAR_DEFS_H__
