@@ -162,7 +162,7 @@ void *lizard_handle(void *arg)
                 pthread_mutex_unlock(&board_lock);
 
                 // delete previous position
-                pthread_mutes_lock(&lizard_connection_lock);
+                pthread_mutex_lock(&lizard_connection_lock);
                 pthread_mutex_lock(&move_lock);
                 delete_lizard(move);
                 pthread_mutex_unlock(&lizard_connection_lock);
@@ -276,6 +276,6 @@ void *roach_handle(void *arg)
     }
 }
 
-void *t_since_last_msg(void *arg)
-{
-}
+// void *t_since_last_msg(void *arg)
+// {
+// }
