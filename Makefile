@@ -1,4 +1,4 @@
-all: proto lizard-client roaches-client lizardsnroaches-server
+all: lizard-client roaches-client lizardsnroaches-server
 
 LDFLAGS = -L /opt/homebrew/Cellar/zeromq/4.3.5_1/lib -I /opt/homebrew/Cellar/zeromq/4.3.5_1/include
 

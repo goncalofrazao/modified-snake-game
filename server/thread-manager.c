@@ -10,9 +10,6 @@
 
 static pthread_mutex_t board_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t score_board_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t move_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t lizard_connection_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t roach_connection_lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct _thread_manager
 {
@@ -89,19 +86,14 @@ void *lizard_handle(void *arg)
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
 
             // check if lizard is already connected
-            pthread_mutex_lock(&lizard_connection_lock);
             id = find_lizard();
             if (id == -1)
             {
                 INVALID_MSG(responder, send_msg);
             }
+
             move = get_lizard(id);
-
-            pthread_mutex_lock(&move_lock);
             init_lizard(move, id);
-            pthread_mutex_unlock(&move_lock);
-            pthread_mutex_unlock(&lizard_connection_lock);
-
             pthread_mutex_lock(&board_lock);
             draw_lizard(publisher, move, board, 0);
             wrefresh(board);
@@ -128,12 +120,9 @@ void *lizard_handle(void *arg)
             id = recv_msg->id[0] - 'a';
             move = get_lizard(id);
 
-            pthread_mutex_lock(&move_lock);
-            move_lizard(move, recv_msg->direction);
-            pthread_mutex_unlock(&move_lock);
-
             pthread_mutex_lock(&board_lock);
             draw_lizard(publisher, move, board, 1);
+            move_lizard(move, recv_msg->direction);
             draw_lizard(publisher, move, board, 0);
             wrefresh(board);
             pthread_mutex_unlock(&board_lock);
@@ -156,17 +145,12 @@ void *lizard_handle(void *arg)
                 id = recv_msg->id[0] - 'a';
                 move = get_lizard(id);
 
+                // delete previous position
                 pthread_mutex_lock(&board_lock);
                 draw_lizard(publisher, move, board, 1);
                 wrefresh(board);
                 pthread_mutex_unlock(&board_lock);
-
-                // delete previous position
-                pthread_mutex_lock(&lizard_connection_lock);
-                pthread_mutex_lock(&move_lock);
                 delete_lizard(move);
-                pthread_mutex_unlock(&lizard_connection_lock);
-                pthread_mutex_unlock(&move_lock);
             }
 
             send_msg.success = 1;
@@ -224,12 +208,9 @@ void *roach_handle(void *arg)
                 INVALID_MSG(responder, send_msg);
                 continue;
             }
-            pthread_mutex_lock(&roach_connection_lock);
+
             id = get_next_free_roach();
-            pthread_mutex_lock(&move_lock);
             init_roach(id, recv_msg);
-            pthread_mutex_unlock(&move_lock);
-            pthread_mutex_unlock(&roach_connection_lock);
 
             pthread_mutex_lock(&board_lock);
             draw_roach(publisher, id, board, 0);
@@ -246,17 +227,15 @@ void *roach_handle(void *arg)
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
             // validate roach
             id = find_roach(recv_msg);
-            pthread_mutex_lock(&move_lock);
             if (id == -1 || roach_dead(id))
             {
                 INVALID_MSG(responder, send_msg);
                 continue;
             }
-            move_roach(id, recv_msg->direction);
-            pthread_mutex_unlock(&move_lock);
 
             pthread_mutex_lock(&board_lock);
             draw_roach(publisher, id, board, 1);
+            move_roach(id, recv_msg->direction);
             draw_roach(publisher, id, board, 0);
             wrefresh(board);
             pthread_mutex_unlock(&board_lock);
@@ -275,7 +254,3 @@ void *roach_handle(void *arg)
         SEND__MESSAGE(responder, buffer, packed_size);
     }
 }
-
-// void *t_since_last_msg(void *arg)
-// {
-// }
