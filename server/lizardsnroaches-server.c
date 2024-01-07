@@ -13,21 +13,12 @@
 #include "../snd_rcv_proto.h"
 #include "roaches-lib.h"
 #include "lizard-lib.h"
-
-#define INVALID_MSG(socket, send_msg)                       \
-    do                                                      \
-    {                                                       \
-        send_msg.success = 0;                               \
-        send_msg.has_score = 0;                             \
-        send_msg.has_password = 0;                          \
-        send_msg.id = NULL;                                 \
-        size_t packed_size;                                 \
-        void *buffer;                                       \
-        PACK__REPLY_MESSAGE(send_msg, buffer, packed_size); \
-        SEND__MESSAGE(socket, buffer, packed_size);         \
-    } while (0);
+#include "thread-manager.h"
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define LIZARDS_THREADS 5
+#define ROACHES_THREADS 5
 
 /**
  * @brief receives and processes messages from clients
@@ -39,25 +30,19 @@
 int main(int argc, char *argv[])
 {
     // argument check
-    if (argc != 3)
+    if (argc != 4)
     {
-        printf("Usage: %s <req_port> <pub_port>\n", argv[0]);
+        printf("Usage: %s <lizards_port> <roaches_port> <screen_port>\n", argv[0]);
         return 1;
     }
 
     char *endpoint;
-    DisplayUpdateMessage display_msg = DISPLAY_UPDATE_MESSAGE__INIT;
-    RequestMessage *recv_msg;
-    ReplyMessage send_msg = REPLY_MESSAGE__INIT;
-    void *move;
-    int id;
-    Type msg_type;
-    void *buffer;
-    size_t packed_size;
+    int rc;
 
     // initialize random seed
     srand(time(NULL));
 
+    // initialize lizards and roaches
     init_lizards();
     init_roaches();
 
@@ -68,17 +53,40 @@ int main(int argc, char *argv[])
         printf("Error allocating memory\n");
         return 1;
     }
+
     void *context = zmq_ctx_new();
     assert(context != NULL);
-    void *responder = zmq_socket(context, ZMQ_REP);
-    assert(responder != NULL);
-    sprintf(endpoint, "tcp://*:%s", argv[1]);
-    assert(zmq_bind(responder, endpoint) == 0);
 
+    // lizard sockets
+    sprintf(endpoint, "tcp://*:%s", argv[1]);
+    ProxyManager lizard_proxy_manager;
+    lizard_proxy_manager.frontend = zmq_socket(context, ZMQ_ROUTER);
+    assert(lizard_proxy_manager.frontend != NULL);
+    rc = zmq_bind(lizard_proxy_manager.frontend, endpoint);
+    assert(rc == 0);
+    lizard_proxy_manager.backend = zmq_socket(context, ZMQ_DEALER);
+    assert(lizard_proxy_manager.backend != NULL);
+    rc = zmq_bind(lizard_proxy_manager.backend, "inproc://lizard-back-end");
+    assert(rc == 0);
+
+    // roach sockets
+    sprintf(endpoint, "tcp://*:%s", argv[2]);
+    ProxyManager roaches_proxy_manager;
+    roaches_proxy_manager.frontend = zmq_socket(context, ZMQ_ROUTER);
+    assert(roaches_proxy_manager.frontend != NULL);
+    rc = zmq_bind(roaches_proxy_manager.frontend, endpoint);
+    assert(rc == 0);
+    roaches_proxy_manager.backend = zmq_socket(context, ZMQ_DEALER);
+    assert(roaches_proxy_manager.backend != NULL);
+    rc = zmq_bind(roaches_proxy_manager.backend, "inproc://roaches-back-end");
+    assert(rc == 0);
+
+    // screen sockets
+    sprintf(endpoint, "tcp://*:%s", argv[3]);
     void *publisher = zmq_socket(context, ZMQ_PUB);
     assert(publisher != NULL);
-    sprintf(endpoint, "tcp://*:%s", argv[2]);
-    assert(zmq_bind(publisher, endpoint) == 0);
+    rc = zmq_bind(publisher, endpoint);
+    assert(rc == 0);
 
     // initialize ncurses
     initscr();
@@ -86,13 +94,11 @@ int main(int argc, char *argv[])
     curs_set(0);
     keypad(stdscr, TRUE);
     noecho();
-
     // board window
     WINDOW *board = newwin(WINDOW_SIZE + 2, WINDOW_SIZE + 2, 0, 0);
     assert(board != NULL);
     box(board, 0, 0);
     wrefresh(board);
-
     // score board window
     WINDOW *score_board = newwin(WINDOW_SIZE + 2, 20, 0, WINDOW_SIZE + 3);
     assert(score_board != NULL);
@@ -100,151 +106,41 @@ int main(int argc, char *argv[])
     mvwprintw(score_board, 0, 5, "  Scores  ");
     wrefresh(score_board);
 
-    while (1)
+    ThreadManager *thread_manager = init_thread_manager(context, board, score_board, publisher);
+
+    // create lizard threads
+    pthread_t lizard_threads[LIZARDS_THREADS];
+    for (int i = 0; i < LIZARDS_THREADS; i++)
     {
-        assert(zmq_recv(responder, &msg_type, sizeof(Type), 0) == sizeof(Type));
-        switch (msg_type)
-        {
-        case TYPE__LIZARD_CONNECT:
-            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // new lizard will get first available id
-            if ((id = find_lizard()) == -1)
-            {
-                INVALID_MSG(responder, send_msg);
-                continue;
-            }
-            move = get_lizard(id);
-
-            // generate lizard data
-            init_lizard(move, id);
-
-            // draw lizard
-            draw_lizard(publisher, move, board, 0);
-            send_msg.has_password = 1;
-            send_msg.has_score = 0;
-            send_msg.success = 1;
-            fill_lizard_data(move, &send_msg);
-
-            // update score board
-            mvwprintw(score_board, send_msg.id[0] - 'a' + 2, 11, "    ");
-            wrefresh(score_board);
-            mvwprintw(score_board, send_msg.id[0] - 'a' + 2, 1, "Lizard %c: %d", send_msg.id[0], send_msg.score);
-            break;
-        case TYPE__ROACH_CONNECT:
-            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // server full
-            if (roaches_full())
-            {
-                INVALID_MSG(responder, send_msg);
-                continue;
-            }
-            id = get_next_free_roach();
-
-            // generate roach data
-            init_roach(id, recv_msg);
-
-            // draw roach
-            draw_roach(publisher, id, board, 0);
-
-            send_msg.has_password = 1;
-            send_msg.has_score = 0;
-            send_msg.success = 1;
-            fill_roach_data(id, &send_msg);
-            break;
-        case TYPE__LIZARD_MOVE:
-            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // validate lizard
-            if (recv_msg->id == NULL || !valid_lizard(recv_msg))
-            {
-                INVALID_MSG(responder, send_msg);
-                continue;
-            }
-            move = get_lizard(recv_msg->id[0] - 'a');
-
-            // delete previous position
-            draw_lizard(publisher, move, board, 1);
-
-            // move lizard
-            move_lizard(move, recv_msg->direction);
-
-            // draw new position
-            draw_lizard(publisher, move, board, 0);
-
-            send_msg.has_password = 0;
-            send_msg.has_score = 1;
-            send_msg.success = 1;
-            fill_lizard_data(move, &send_msg);
-
-            // update score board
-            mvwprintw(score_board, send_msg.id[0] - 'a' + 2, 11, "    ");
-            wrefresh(score_board);
-            mvwprintw(score_board, send_msg.id[0] - 'a' + 2, 11, "%d", send_msg.score);
-            break;
-        case TYPE__ROACH_MOVE:
-            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // validate roach
-            id = find_roach(recv_msg);
-            if (id == -1)
-            {
-                INVALID_MSG(responder, send_msg);
-                continue;
-            }
-
-            if (roach_dead(id))
-            {
-                // delete previous position
-                INVALID_MSG(responder, send_msg);
-                continue;
-            }
-
-            // delete roach
-            draw_roach(publisher, id, board, 1);
-
-            // move roach
-            move_roach(id, recv_msg->direction);
-
-            // draw new position
-            draw_roach(publisher, id, board, 0);
-
-            send_msg.has_password = 0;
-            send_msg.has_score = 0;
-            send_msg.success = 1;
-            send_msg.id = NULL;
-            break;
-        case TYPE__LIZARD_DISCONNECT:
-            RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
-            // validate lizard
-            if (recv_msg->id == NULL || !valid_lizard(recv_msg))
-            {
-                move = get_lizard(recv_msg->id[0] - 'a');
-
-                // delete previous position
-                draw_lizard(publisher, move, board, 1);
-                delete_lizard(move);
-            }
-
-            send_msg.has_password = 0;
-            send_msg.has_score = 0;
-            send_msg.success = 1;
-            send_msg.id = NULL;
-
-            break;
-        default:
-            INVALID_MSG(responder, send_msg);
-            continue;
-        }
-        wrefresh(score_board);
-        wrefresh(board);
-
-        // reply to client
-        PACK__REPLY_MESSAGE(send_msg, buffer, packed_size);
-        SEND__MESSAGE(responder, buffer, packed_size);
+        pthread_create(&lizard_threads[i], NULL, lizard_handle, (void *)thread_manager);
     }
+
+    // create roach threads
+    pthread_t roach_threads[ROACHES_THREADS];
+    for (int i = 0; i < ROACHES_THREADS; i++)
+    {
+        pthread_create(&roach_threads[i], NULL, roach_handle, (void *)thread_manager);
+    }
+
+    // create proxy threads
+    pthread_t lizard_proxy_thread;
+    pthread_create(&lizard_proxy_thread, NULL, run_proxy, (void *)&lizard_proxy_manager);
+    pthread_t roach_proxy_thread;
+    pthread_create(&roach_proxy_thread, NULL, run_proxy, (void *)&roaches_proxy_manager);
+
+    // wait for threads to finish
+    pthread_join(lizard_proxy_thread, NULL);
+
+    // cleanup
     endwin();
 
-    zmq_close(responder);
+    // close_proxy_manager(lizard_proxy_manager);
+    // close_proxy_manager(roach_proxy_manager);
     zmq_close(publisher);
     zmq_ctx_destroy(context);
+
+    free(thread_manager);
+    free(endpoint);
 
     return 0;
 }

@@ -69,4 +69,17 @@
         zmq_msg_close(&msg);                                                                    \
     } while (0);
 
+#define INVALID_MSG(socket, send_msg)                       \
+    do                                                      \
+    {                                                       \
+        send_msg.success = 0;                               \
+        send_msg.has_score = 0;                             \
+        send_msg.has_password = 0;                          \
+        send_msg.id = NULL;                                 \
+        size_t packed_size;                                 \
+        void *buffer;                                       \
+        PACK__REPLY_MESSAGE(send_msg, buffer, packed_size); \
+        SEND__MESSAGE(socket, buffer, packed_size);         \
+    } while (0);
+
 #endif
