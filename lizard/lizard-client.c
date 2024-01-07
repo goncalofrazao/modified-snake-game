@@ -45,6 +45,7 @@ void *handle_lizard(void *arg)
     // check if server is full
     if (reply->success == 0)
     {
+        printf("Server is full\n");
         zmq_close(requester);
         free(server_req);
         exit(0);
