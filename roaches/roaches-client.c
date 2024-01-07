@@ -19,10 +19,10 @@ static int id;
 static int num_roaches;
 
 /**
- * @brief creates a roach client and connects to server to add roaches to the game
+ * @brief thread function to handle roaches movements and connections
  *
- * @param arg request socket
- * @return int exit code (0 = success)
+ * @param arg requester socket
+ * @return void*
  */
 void *handle_roach(void *arg)
 {
@@ -36,7 +36,7 @@ void *handle_roach(void *arg)
     // connect possible roaches to server
     for (int i = 0; i < num_roaches; i++)
     {
-        // connect message
+        // send connect type message and setup roach
         zmq_send(requester, &msgtype, sizeof(Type), ZMQ_SNDMORE);
         request_message__init(&roaches[i]);
         roaches[i].id = (char *)malloc(2 * sizeof(char));
@@ -44,6 +44,8 @@ void *handle_roach(void *arg)
         roaches[i].id[1] = '\0';
         roaches[i].has_direction = 0;
         roaches[i].has_password = 0;
+
+        // pack and send the connect message
         PACK__REQUEST_MESSAGE(roaches[i], buffer, packed_size);
         SEND__MESSAGE(requester, buffer, packed_size);
 
@@ -57,17 +59,16 @@ void *handle_roach(void *arg)
         // full field
         if (roaches[i].password == 0 && i != 0)
         {
-            printf("Roaches - Field full!\n");
+            printf("Field full!\n");
             num_roaches = i;
-            printf("Roaches - %d roaches connected\n", num_roaches);
+            // resize roaches array
             roaches = (RequestMessage *)realloc(roaches, num_roaches * sizeof(RequestMessage));
             break;
         }
         else if (roaches[i].password == 0 && i == 0)
         {
-            printf("Roaches - Field full!\n");
-            free(roaches);
-            return 0;
+            printf("Field full!\n");
+            exit(0);
         }
     }
 
@@ -153,7 +154,7 @@ int main(int argc, char *argv[])
 
         if (key == '\n')
         {
-            printf("Roaches - Quitting...\n");
+            printf("Disconnecting...\n");
             msgtype = TYPE__BOT_DISCONNECT;
             for (int i = 0; i < num_roaches; i++)
             {

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <unistd.h> // include time
+#include <unistd.h>
 
 #define BOTS_NUMBER WINDOW_SIZE *WINDOW_SIZE / 3
 
@@ -84,7 +84,7 @@ void init_bot(int i, RequestMessage *msg)
     {
         bot->pos_x = rand() % WINDOW_SIZE + 1;
         bot->pos_y = rand() % WINDOW_SIZE + 1;
-    } while (lizard_here(bot->id[0], bot->pos_x, bot->pos_y) || wasp_here(bot->pos_x, bot->pos_y) || (bot->id[0] == '#' && roach_here(bot->pos_x, bot->pos_y)));
+    } while (lizard_here(bot->id[0], bot->pos_x, bot->pos_y) || (bot->id[0] != '#' && wasp_here(bot->pos_x, bot->pos_y)) || (bot->id[0] == '#' && roach_here(bot->pos_x, bot->pos_y) && wasp_here(bot->pos_x, bot->pos_y) > 1));
 }
 
 /**
@@ -131,14 +131,15 @@ void draw_bot(void *publisher, int i, WINDOW *board, int delete)
  */
 int wasp_here(int pos_x, int pos_y)
 {
+    int n = 0;
     for (int i = 0; i < BOTS_NUMBER; i++)
     {
         if (bot_data[i].id[0] == '#' && bot_data[i].pos_x == pos_x && bot_data[i].pos_y == pos_y)
         {
-            return 1;
+            n++;
         }
     }
-    return 0;
+    return n;
 }
 
 /**

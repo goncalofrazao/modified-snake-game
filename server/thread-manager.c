@@ -277,8 +277,8 @@ void *bots_handle(void *arg)
 
             // initialize bot information
             // draw bot
-            pthread_mutex_lock(&board_lock);
             init_bot(id, recv_msg);
+            pthread_mutex_lock(&board_lock);
             draw_bot(publisher, id, board, 0);
             wrefresh(board);
             pthread_mutex_unlock(&board_lock);
@@ -326,7 +326,6 @@ void *bots_handle(void *arg)
             id = find_bot(recv_msg);
             if (id == -1)
             {
-                printf("Invalid roach\n");
                 INVALID_MSG(responder, send_msg);
                 continue;
             }

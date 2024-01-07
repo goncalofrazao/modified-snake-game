@@ -18,7 +18,7 @@ lizardsnroaches-server: server/lizardsnroaches-server.c
 	gcc server/*.c lar-defs.pb-c.c -g -o lizardsnroaches-server -lncurses -lzmq -lprotobuf-c -lpthread $(LDFLAGS) $(PROTOFLAGS)
 
 wasps-client: wasps/wasps-client.c
-	gcc wasps/*.c lar-defs.pb-c.c -o wasps-client -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
+	gcc wasps/*.c lar-defs.pb-c.c -o wasps-client -lncurses -lzmq -lprotobuf-c -lpthread $(LDFLAGS) $(PROTOFLAGS) 
 
 clean:
 	rm -rf lizard-client roaches-client wasps-client lizardsnroaches-server *.dSYM

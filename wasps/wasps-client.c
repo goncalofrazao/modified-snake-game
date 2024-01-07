@@ -19,7 +19,7 @@ static int id;
 static int num_wasps;
 
 /**
- * @brief
+ * @brief thread function to handle wasps movements and connections
  *
  * @param arg requester socket
  * @return void*
@@ -36,7 +36,7 @@ void *handle_wasp(void *arg)
     // connect possible wasps to server
     for (int i = 0; i < num_wasps; i++)
     {
-        // connect message
+        // send connect type message and setup wasp
         zmq_send(requester, &msgtype, sizeof(Type), ZMQ_SNDMORE);
         request_message__init(&wasps[i]);
         wasps[i].id = (char *)malloc(2 * sizeof(char));
@@ -44,6 +44,8 @@ void *handle_wasp(void *arg)
         wasps[i].id[1] = '\0';
         wasps[i].has_direction = 0;
         wasps[i].has_password = 0;
+
+        // pack and send connect message
         PACK__REQUEST_MESSAGE(wasps[i], buffer, packed_size);
         SEND__MESSAGE(requester, buffer, packed_size);
 
@@ -57,17 +59,16 @@ void *handle_wasp(void *arg)
         // full field
         if (wasps[i].password == 0 && i != 0)
         {
-            printf("Wasps - Field full!\n");
+            printf("Field full!\n");
             num_wasps = i;
-            printf("Wasps - %d wasps connected\n", num_wasps);
+            // resize wasps array
             wasps = (RequestMessage *)realloc(wasps, num_wasps * sizeof(RequestMessage));
             break;
         }
         else if (wasps[i].password == 0 && i == 0)
         {
-            printf("Wasps - Field full!\n");
-            free(wasps);
-            return 0;
+            printf("Field full!\n");
+            exit(0);
         }
     }
 
@@ -89,16 +90,12 @@ void *handle_wasp(void *arg)
         switch (wasps[id].direction)
         {
         case DIRECTION__LEFT:
-            printf("Wasp %d Going Left\n", id);
             break;
         case DIRECTION__RIGHT:
-            printf("Wasp %d Going Right\n", id);
             break;
         case DIRECTION__DOWN:
-            printf("Wasp %d Going Down\n", id);
             break;
         case DIRECTION__UP:
-            printf("Wasp %d Going Up\n", id);
             break;
         }
 
@@ -153,7 +150,7 @@ int main(int argc, char *argv[])
 
         if (key == '\n')
         {
-            printf("Wasps - Quitting...\n");
+            printf("Disconnecting...\n");
             msgtype = TYPE__BOT_DISCONNECT;
             for (int i = 0; i < num_wasps; i++)
             {

@@ -131,7 +131,7 @@ void draw_lizard(void *publisher, void *lizard_, WINDOW *board, int delete)
     }
 
     // lizard body
-    if (delete || aux.points < 0)
+    if (delete)
     {
         aux.id[0] = ' ';
     }
@@ -148,6 +148,11 @@ void draw_lizard(void *publisher, void *lizard_, WINDOW *board, int delete)
     wmove(board, aux.pos_x, aux.pos_y);
     waddch(board, head | A_BOLD);
     publisher_update(&aux, head, publisher);
+
+    if (lizard->points < 0)
+    {
+        return;
+    }
 
     // draw lizard body
     for (int i = 0; i < 5; i++)
@@ -312,7 +317,7 @@ void *offline_lizards(void *arg)
         sleep(3);
         for (int i = 0; i < LIZARDS_NUMBER; i++)
         {
-            if (lizard_data[i].id[0] != '0' && time(NULL) - lizard_data[i].eaten > 20)
+            if (lizard_data[i].id[0] != '0' && time(NULL) - lizard_data[i].eaten > 60)
             {
                 pthread_mutex_lock(&lizard_data_lock[i]);
                 lizard_data[i].id[0] = '0';
