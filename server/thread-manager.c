@@ -21,7 +21,7 @@ struct _thread_manager
 
 void update_score_board(WINDOW *score_board, int id, int score)
 {
-    mvwprintw(score_board, id + 2, 11, "    ");
+    mvwprintw(score_board, id + 2, 1, "Lizard %c:    ", (char)id + 'a');
     wrefresh(score_board);
     mvwprintw(score_board, id + 2, 11, "%d", score);
     wrefresh(score_board);
