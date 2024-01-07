@@ -11,7 +11,7 @@
 
 static info_t lizard_data[LIZARDS_NUMBER];
 
-static pthread_mutex_t lizard_data_lock[LIZARDS_NUMBER] = {PTHREAD_MUTEX_INITIALIZER};
+static pthread_mutex_t lizard_data_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief initializes lizard data array
@@ -21,12 +21,12 @@ static pthread_mutex_t lizard_data_lock[LIZARDS_NUMBER] = {PTHREAD_MUTEX_INITIAL
 void init_lizards()
 {
     // initialize lizard data
+    pthread_mutex_lock(&lizard_data_lock);
     for (int i = 0; i < LIZARDS_NUMBER; i++)
     {
-        pthread_mutex_lock(&lizard_data_lock[i]);
         lizard_data[i].id[0] = '0';
-        pthread_mutex_unlock(&lizard_data_lock[i]);
     }
+    pthread_mutex_unlock(&lizard_data_lock);
 }
 
 /**
@@ -39,6 +39,7 @@ void init_lizards()
  */
 int lizard_here(char ch, int pos_x, int pos_y)
 {
+    pthread_mutex_lock(&lizard_data_lock);
     for (int i = 0; i < LIZARDS_NUMBER; i++)
     {
         // valid lizards do not have id '0'
@@ -48,6 +49,7 @@ int lizard_here(char ch, int pos_x, int pos_y)
             return 1;
         }
     }
+    pthread_mutex_unlock(&lizard_data_lock);
     return 0;
 }
 
@@ -61,7 +63,6 @@ void init_lizard(void *lizard_, int id)
 {
     info_t *lizard = (info_t *)lizard_;
 
-    pthread_mutex_lock(&lizard_data_lock[id]);
     lizard->id[0] = id + 'a';
     lizard->id[1] = '\0';
     lizard->password = rand();
@@ -76,7 +77,7 @@ void init_lizard(void *lizard_, int id)
 
     // set random direction
     lizard->direction = rand() % 4;
-    pthread_mutex_unlock(&lizard_data_lock[id]);
+    pthread_mutex_unlock(&lizard_data_lock);
 }
 
 /**
@@ -86,6 +87,7 @@ void init_lizard(void *lizard_, int id)
  */
 int find_lizard()
 {
+    pthread_mutex_lock(&lizard_data_lock);
     for (int i = 0; i < LIZARDS_NUMBER; i++)
     {
         if (lizard_data[i].id[0] == '0')
@@ -93,6 +95,7 @@ int find_lizard()
             return i;
         }
     }
+    pthread_mutex_unlock(&lizard_data_lock);
     return -1;
 }
 
@@ -187,24 +190,18 @@ void move_lizard(void *move_, Direction direction)
         if (lizard_data[i].id[0] != '0' && lizard_data[i].pos_x == aux.pos_x && lizard_data[i].pos_y == aux.pos_y)
         {
             points = (lizard_data[i].points + aux.points) / 2;
-            pthread_mutex_lock(&lizard_data_lock[i]);
             lizard_data[i].points = points;
-            pthread_mutex_unlock(&lizard_data_lock[i]);
-            pthread_mutex_lock(&lizard_data_lock[id]);
             move->points = points;
             move->direction = direction;
-            pthread_mutex_unlock(&lizard_data_lock[id]);
             return;
         }
     }
 
     // add points and kill roaches
-    move->points = kill_roaches(aux.pos_x, aux.pos_y);
+    move->points += kill_roaches(aux.pos_x, aux.pos_y);
 
     // move lizard
-    pthread_mutex_lock(&lizard_data_lock[id]);
     new_position(move, direction);
-    pthread_mutex_unlock(&lizard_data_lock[id]);
 }
 
 /**
@@ -254,9 +251,9 @@ int valid_lizard(RequestMessage *recv_msg)
  */
 void delete_lizard(void *lizard_)
 {
+    pthread_mutex_lock(&lizard_data_lock);
     info_t *lizard = (info_t *)lizard_;
     int id = lizard->id[0] - 'a';
-    pthread_mutex_lock(&lizard_data_lock[id]);
     lizard->id[0] = '0';
-    pthread_mutex_unlock(&lizard_data_lock[id]);
+    pthread_mutex_lock(&lizard_data_lock);
 }

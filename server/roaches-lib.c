@@ -13,8 +13,6 @@
 static info_t roach_data[ROACHES_NUMBER];
 static int roaches = 0;
 
-static pthread_mutex_t roach_data_lock[ROACHES_NUMBER] = {PTHREAD_MUTEX_INITIALIZER};
-
 /**
  * @brief Respawns roach in a random position after 5 seconds
  *
@@ -26,10 +24,11 @@ void *respawn_roach(void *arg)
     info_t *roach = &roach_data[i];
     // respawn after 5 seconds in a random position
     sleep(5);
-    pthread_mutex_lock(&roach_data_lock[i]);
-    roach->pos_x = rand() % WINDOW_SIZE + 1;
-    roach->pos_y = rand() % WINDOW_SIZE + 1;
-    pthread_mutex_unlock(&roach_data_lock[i]);
+    do
+    {
+        roach->pos_x = rand() % WINDOW_SIZE + 1;
+        roach->pos_y = rand() % WINDOW_SIZE + 1;
+    } while (lizard_here(roach->id[0], roach->pos_x, roach->pos_y));
     return (void *)roach;
 }
 
@@ -43,10 +42,8 @@ void init_roaches()
 {
     for (int i = 0; i < ROACHES_NUMBER; i++)
     {
-        pthread_mutex_lock(&roach_data_lock[i]);
         roach_data[i].id[0] = '9';
         roach_data[i].id[1] = '\0';
-        pthread_mutex_unlock(&roach_data_lock[i]);
     }
 }
 
@@ -59,7 +56,6 @@ void init_roaches()
 void init_roach(int i, RequestMessage *msg)
 {
     info_t *roach = &roach_data[i];
-    pthread_mutex_lock(&roach_data_lock[i]);
     roach->id[0] = msg->id[0];
     roach->id[1] = '\0';
     roach->password = rand();
@@ -72,7 +68,6 @@ void init_roach(int i, RequestMessage *msg)
         roach->pos_y = rand() % WINDOW_SIZE + 1;
     } while (lizard_here(roach->id[0], roach->pos_x, roach->pos_y));
 
-    pthread_mutex_unlock(&roach_data_lock[i]);
     roaches++;
 }
 
@@ -132,9 +127,7 @@ void move_roach(int m, Direction direction)
     }
 
     // move roach
-    pthread_mutex_lock(&roach_data_lock[m]);
     new_position(move, aux.direction);
-    pthread_mutex_unlock(&roach_data_lock[m]);
 }
 
 /**
@@ -153,10 +146,8 @@ int kill_roaches(int pos_x, int pos_y)
         if (roach_data[i].pos_x == pos_x && roach_data[i].pos_y == pos_y)
         {
             points += atoi(roach_data[i].id);
-            pthread_mutex_lock(&roach_data_lock[i]);
             roach_data[i].pos_x = -1;
             roach_data[i].pos_y = -1;
-            pthread_mutex_unlock(&roach_data_lock[i]);
             pthread_t time_5_sec;
             pthread_create(&time_5_sec, NULL, respawn_roach, (void *)i);
         }
