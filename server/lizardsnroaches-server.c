@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
     RequestMessage *recv_msg;
     ReplyMessage send_msg = REPLY_MESSAGE__INIT;
     void *move;
+    int id;
     Type msg_type;
-    int roaches = 0, roach, lizard, score;
     void *buffer;
     size_t packed_size;
 
@@ -108,15 +108,15 @@ int main(int argc, char *argv[])
         case TYPE__LIZARD_CONNECT:
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
             // new lizard will get first available id
-            if ((lizard = find_lizard()) == -1)
+            if ((id = find_lizard()) == -1)
             {
                 INVALID_MSG(responder, send_msg);
                 continue;
             }
-            move = get_lizard(lizard);
+            move = get_lizard(id);
 
             // generate lizard data
-            init_lizard(move, lizard);
+            init_lizard(move, id);
 
             // draw lizard
             draw_lizard(publisher, move, board, 0);
@@ -138,18 +138,18 @@ int main(int argc, char *argv[])
                 INVALID_MSG(responder, send_msg);
                 continue;
             }
-            move = get_next_free_roach();
+            id = get_next_free_roach();
 
             // generate roach data
-            init_roach(move, recv_msg);
+            init_roach(id, recv_msg);
 
             // draw roach
-            draw_roach(publisher, move, board, 0);
+            draw_roach(publisher, id, board, 0);
 
             send_msg.has_password = 1;
             send_msg.has_score = 0;
             send_msg.success = 1;
-            fill_roach_data(move, &send_msg);
+            fill_roach_data(id, &send_msg);
             break;
         case TYPE__LIZARD_MOVE:
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
@@ -183,14 +183,14 @@ int main(int argc, char *argv[])
         case TYPE__ROACH_MOVE:
             RECV_UNPACK__REQUEST_MESSAGE(responder, recv_msg);
             // validate roach
-            move = find_roach(recv_msg);
-            if (move == NULL)
+            id = find_roach(recv_msg);
+            if (id == -1)
             {
                 INVALID_MSG(responder, send_msg);
                 continue;
             }
 
-            if (roach_dead(move))
+            if (roach_dead(id))
             {
                 // delete previous position
                 INVALID_MSG(responder, send_msg);
@@ -198,13 +198,13 @@ int main(int argc, char *argv[])
             }
 
             // delete roach
-            draw_roach(publisher, move, board, 1);
+            draw_roach(publisher, id, board, 1);
 
             // move roach
-            move_roach(move, recv_msg->direction);
+            move_roach(id, recv_msg->direction);
 
             // draw new position
-            draw_roach(publisher, move, board, 0);
+            draw_roach(publisher, id, board, 0);
 
             send_msg.has_password = 0;
             send_msg.has_score = 0;

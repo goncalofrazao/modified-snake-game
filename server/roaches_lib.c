@@ -13,22 +13,23 @@
 static info_t roach_data[ROACHES_NUMBER];
 static int roaches = 0;
 
-static pthread_mutex_t roach_data_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t roach_data_lock[ROACHES_NUMBER] = {PTHREAD_MUTEX_INITIALIZER};
 
 /**
  * @brief Respawns roach in a random position after 5 seconds
  *
  * @param roach_ pointer to roach struct (return of find_roach)
  */
-void *respawn_roach(void *roach_)
+void *respawn_roach(void *arg)
 {
-    info_t *roach = (info_t *)roach_;
+    long int i = (long int)arg;
+    info_t *roach = &roach_data[i];
     // respawn after 5 seconds in a random position
     sleep(5);
-    pthread_mutex_lock(&roach_data_lock);
+    pthread_mutex_lock(&roach_data_lock[i]);
     roach->pos_x = rand() % WINDOW_SIZE + 1;
     roach->pos_y = rand() % WINDOW_SIZE + 1;
-    pthread_mutex_unlock(&roach_data_lock);
+    pthread_mutex_unlock(&roach_data_lock[i]);
     return (void *)roach;
 }
 
@@ -42,19 +43,23 @@ void init_roaches()
 {
     for (int i = 0; i < ROACHES_NUMBER; i++)
     {
+        pthread_mutex_lock(&roach_data_lock[i]);
         roach_data[i].id[0] = '9';
         roach_data[i].id[1] = '\0';
+        pthread_mutex_unlock(&roach_data_lock[i]);
     }
 }
 
 /**
  * @brief generates roach data
  *
+ * @param i index of roach
  * @param msg message with roach id
  */
-void init_roach(void *roach_, RequestMessage *msg)
+void init_roach(int i, RequestMessage *msg)
 {
-    info_t *roach = (info_t *)roach_;
+    info_t *roach = &roach_data[i];
+    pthread_mutex_lock(&roach_data_lock[i]);
     roach->id[0] = msg->id[0];
     roach->id[1] = '\0';
     roach->password = rand();
@@ -67,8 +72,7 @@ void init_roach(void *roach_, RequestMessage *msg)
         roach->pos_y = rand() % WINDOW_SIZE + 1;
     } while (lizard_here(roach->id[0], roach->pos_x, roach->pos_y));
 
-    // roach is not dead
-    roach->eaten = time(NULL) - 10;
+    pthread_mutex_unlock(&roach_data_lock[i]);
     roaches++;
 }
 
@@ -76,31 +80,31 @@ void init_roach(void *roach_, RequestMessage *msg)
  * @brief find roach with given password
  *
  * @param msg message with password
- * @return void* pointer to roach struct
+ * @return int index of roach, -1 if not found
  */
-void *find_roach(RequestMessage *msg)
+int find_roach(RequestMessage *msg)
 {
     for (int i = 0; i < roaches; i++)
     {
         if (roach_data[i].password == msg->password)
         {
-            return &roach_data[i];
+            return i;
         }
     }
-    return NULL;
+    return -1;
 }
 
 /**
  * @brief draws roach in given position
  *
  * @param publisher socket to publish board updates
- * @param roach_ pointer to roach struct
+ * @param i roach position in roach_data (obtained with find_roach)
  * @param board board window
  * @param delete boolean (1 to delete roach, 0 to draw roach)
  */
-void draw_roach(void *publisher, void *roach_, WINDOW *board, int delete)
+void draw_roach(void *publisher, int i, WINDOW *board, int delete)
 {
-    info_t *roach = (info_t *)roach_;
+    info_t *roach = &roach_data[i];
     char head = delete ? ' ' : roach->id[0];
     wmove(board, roach->pos_x, roach->pos_y);
     waddch(board, head | A_BOLD);
@@ -110,12 +114,12 @@ void draw_roach(void *publisher, void *roach_, WINDOW *board, int delete)
 /**
  * @brief move roach in given direction if valid (no lizard in the way)
  *
- * @param move pointer to roach data
+ * @param m roach position in roach_data (obtained with find_roach)
  * @param direction direction to move
  */
-void move_roach(void *move_, Direction direction)
+void move_roach(int m, Direction direction)
 {
-    info_t *move = (info_t *)move_;
+    info_t *move = &roach_data[m];
     info_t aux;
     move->direction = direction;
     memcpy(&aux, move, sizeof(info_t));
@@ -128,7 +132,9 @@ void move_roach(void *move_, Direction direction)
     }
 
     // move roach
+    pthread_mutex_lock(&roach_data_lock[m]);
     new_position(move, aux.direction);
+    pthread_mutex_unlock(&roach_data_lock[m]);
 }
 
 /**
@@ -142,17 +148,17 @@ int kill_roaches(int pos_x, int pos_y)
 {
     int points = 0;
     // add points and kill roaches
-    for (int i = 0; i < roaches; i++)
+    for (long int i = 0; i < roaches; i++)
     {
         if (roach_data[i].pos_x == pos_x && roach_data[i].pos_y == pos_y)
         {
             points += atoi(roach_data[i].id);
-            pthread_mutex_lock(&roach_data_lock);
+            pthread_mutex_lock(&roach_data_lock[i]);
             roach_data[i].pos_x = -1;
             roach_data[i].pos_y = -1;
-            pthread_mutex_unlock(&roach_data_lock);
+            pthread_mutex_unlock(&roach_data_lock[i]);
             pthread_t time_5_sec;
-            pthread_create(&time_5_sec, NULL, respawn_roach, (void *)&roach_data[i]);
+            pthread_create(&time_5_sec, NULL, respawn_roach, (void *)i);
         }
     }
 
@@ -172,39 +178,39 @@ int roaches_full()
 /**
  * @brief Gets a free roach struct
  *
- * @return void* pointer to roach struct
+ * @return int index of free roach, -1 if none is free
  */
-void *get_next_free_roach()
+int get_next_free_roach()
 {
     for (int i = 0; i < ROACHES_NUMBER; i++)
     {
         if (roach_data[i].id[0] == '9')
         {
-            return &roach_data[i];
+            return i;
         }
     }
-    return NULL;
+    return -1;
 }
 
 /**
  * @brief Fills reply message with roach data
  *
- * @param move pointer to roach struct (return of find_roach)
+ * @param move position of roach in roach_data (obtained with find_roach)
  * @param msg reply message to fill
  */
-void fill_roach_data(void *move_, ReplyMessage *msg)
+void fill_roach_data(int move, ReplyMessage *msg)
 {
-    fill_id_and_password((info_t *)move_, msg);
+    fill_id_and_password(&roach_data[move], msg);
 }
 
 /**
  * @brief Checks if roach is dead
  *
- * @param roach_ pointer to roach struct (return of find_roach)
+ * @param i position of roach in roach_data (obtained with find_roach)
  * @return int 1 if roach is dead, 0 otherwise
  */
-int roach_dead(void *roach_)
+int roach_dead(int i)
 {
-    info_t *roach = (info_t *)roach_;
+    info_t *roach = &roach_data[i];
     return roach->pos_x == -1;
 }
