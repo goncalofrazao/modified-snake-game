@@ -11,8 +11,8 @@
 #include <pthread.h>
 
 #include "../snd_rcv_proto.h"
-#include "roaches_lib.h"
-#include "lizard_lib.h"
+#include "roaches-lib.h"
+#include "lizard-lib.h"
 
 #define INVALID_MSG(socket, send_msg)                       \
     do                                                      \

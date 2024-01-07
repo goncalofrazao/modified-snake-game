@@ -1,6 +1,6 @@
-#include "roaches_lib.h"
+#include "roaches-lib.h"
 #include "lar-defs.h"
-#include "lizard_lib.h"
+#include "lizard-lib.h"
 
 #include <time.h>
 #include <stdlib.h>
