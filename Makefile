@@ -6,15 +6,16 @@ PROTOFLAGS = -L /opt/homebrew/Cellar/protobuf-c/1.5.0/lib -I /opt/homebrew/Cella
 
 proto: lar-defs.proto
 	protoc-c --c_out=. lar-defs.proto
+	protoc --python_out=./roaches lar-defs.proto
 
-lizard-client: lizard/lizard-client.c lar-defs.h
-	gcc lizard/lizard-client.c lar-defs.pb-c.c -o lizard/lizard-client -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
+lizard-client: lizard/lizard-client.c
+	gcc lizard/*.c lar-defs.pb-c.c -o lizard-client -lncurses -lzmq -lprotobuf-c -lpthread $(LDFLAGS) $(PROTOFLAGS)
 	
-roaches-client: roaches/roaches-client.c lar-defs.h
-	gcc roaches/roaches-client.c lar-defs.pb-c.c -o roaches/roaches-client -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
+roaches-client: roaches/roaches-client.c
+	gcc roaches/*.c lar-defs.pb-c.c -o roaches-client -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
 
-lizardsnroaches-server: server/lizardsnroaches-server.c lar-defs.h
-	gcc server/lizardsnroaches-server.c lar-defs.pb-c.c -o server/lizardsnroaches-server -lncurses -lzmq -lprotobuf-c $(LDFLAGS) $(PROTOFLAGS)
+lizardsnroaches-server: server/lizardsnroaches-server.c
+	gcc server/*.c lar-defs.pb-c.c -o lizardsnroaches-server -lncurses -lzmq -lprotobuf-c -lpthread $(LDFLAGS) $(PROTOFLAGS)
 
 clean:
-	rm -rf lizard/lizard-client roaches/roaches-client display/display-app server/lizardsnroaches-server *.dSYM
+	rm -rf lizard-client roaches-client lizardsnroaches-server *.dSYM
