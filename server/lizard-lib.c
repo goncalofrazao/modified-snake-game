@@ -68,7 +68,7 @@ void init_lizard(void *lizard_, int id)
     lizard->id[1] = '\0';
     lizard->password = rand();
     lizard->points = 0;
-    lizard->eaten = time(NULL);
+    lizard->moved = time(NULL);
 
     // find free position
     do
@@ -183,7 +183,7 @@ void draw_lizard(void *publisher, void *lizard_, WINDOW *board, int delete)
 void move_lizard(void *move_, Direction direction)
 {
     info_t *move = (info_t *)move_;
-    move->eaten = time(NULL);
+    move->moved = time(NULL);
     info_t aux;
     int points;
     int id = move->id[0] - 'a';
@@ -317,7 +317,7 @@ void *offline_lizards(void *arg)
         sleep(3);
         for (int i = 0; i < LIZARDS_NUMBER; i++)
         {
-            if (lizard_data[i].id[0] != '0' && time(NULL) - lizard_data[i].eaten > 60)
+            if (lizard_data[i].id[0] != '0' && time(NULL) - lizard_data[i].moved > 60)
             {
                 pthread_mutex_lock(&lizard_data_lock[i]);
                 lizard_data[i].id[0] = '0';

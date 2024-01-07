@@ -14,7 +14,6 @@ enum Type {
     BOT_MOVE = 3;
     LIZARD_DISCONNECT = 4;
     BOT_DISCONNECT = 5;
-    DISPLAY_UPDATE = 6;
 }
 
 message request_message {

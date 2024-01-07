@@ -13,7 +13,7 @@ typedef struct info_t
     int points;
     int pos_x, pos_y;
     Direction direction;
-    time_t eaten;
+    time_t moved;
 } info_t;
 
 void publisher_update(info_t *move, char ch, void *publisher);
